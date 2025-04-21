@@ -9,38 +9,33 @@
   <style>
     html, body { margin: 0; padding: 0; height: 100%; }
     #map { height: 100vh; width: 100vw; }
+    .painel-busca {
+      position: absolute;
+      z-index: 1000;
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      top: 10px;
+      left: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      font-family: sans-serif;
+    }
+    .painel-busca input {
+      margin-bottom: 5px;
+      width: 180px;
+      padding: 5px;
+      display: block;
+    }
+    .painel-busca button {
+      margin-top: 5px;
+      margin-right: 5px;
+      padding: 5px 10px;
+    }
   </style>
 </head>
 <body>
-  <div id="map"></div>
 
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
-  <script>
-    const map = L.map('map').setView([-23.2, -45.9], 12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-    const markers = L.markerClusterGroup();
-
-    fetch("/api/postes")
-      .then(res => res.json())
-      .then(data => {
-        data.forEach(poste => {
-          if (!poste.coordenadas) return;
-          const [lat, lon] = poste.coordenadas.split(',').map(Number);
-          if (isNaN(lat) || isNaN(lon)) return;
-
-          const marker = L.marker([lat, lon]);
-          marker.bindPopup(`<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b> ${poste.empresas}`);
-          markers.addLayer(marker);
-        });
-        map.addLayer(markers);
-      });
-  </script>
-</body>
-</html>
-<body>
-  <div style="position: absolute; z-index: 1000; background: white; padding: 10px; border-radius: 8px; top: 10px; left: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.2);">
+  <div class="painel-busca">
     <input type="text" id="busca-id" placeholder="Buscar por ID do poste" />
     <input type="text" id="busca-coord" placeholder="Latitude,Longitude" />
     <button onclick="buscarID()">🔍 ID</button>
@@ -54,6 +49,7 @@
   <script>
     const map = L.map('map').setView([-23.2, -45.9], 12);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
     const markers = L.markerClusterGroup();
     const todosPostes = [];
 
@@ -102,3 +98,4 @@
     }
   </script>
 </body>
+</html>
