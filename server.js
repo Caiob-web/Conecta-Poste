@@ -6,7 +6,7 @@ const app = express();
 const port = 3000;
 
 app.use(cors());
-app.use(express.static("public")); // serve o frontend
+app.use(express.static("public"));
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
