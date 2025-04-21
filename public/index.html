@@ -1,155 +1,163 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Mapa de Postes</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"
-    />
-    <style>
-      html, body {
-        margin: 0;
-        padding: 0;
-        height: 100%;
-      }
-      #map {
-        height: 100vh;
-        width: 100vw;
-      }
-      .painel-busca {
-        position: absolute;
-        z-index: 1000;
-        background: white;
-        padding: 10px;
-        border-radius: 8px;
-        top: 10px;
-        left: 10px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-        font-family: sans-serif;
-      }
-      .painel-busca input {
-        margin-bottom: 5px;
-        width: 180px;
-        padding: 5px;
-        display: block;
-      }
-      .painel-busca button {
-        margin-top: 5px;
-        margin-right: 5px;
-        padding: 5px 10px;
-      }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mapa de Postes</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+    #map {
+      height: 100vh;
+      width: 100vw;
+    }
+    .painel-busca {
+      position: absolute;
+      z-index: 1000;
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      top: 10px;
+      left: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+      font-family: sans-serif;
+    }
+    .painel-busca input {
+      margin-bottom: 5px;
+      width: 180px;
+      padding: 5px;
+      display: block;
+    }
+    .painel-busca button {
+      margin-top: 5px;
+      margin-right: 5px;
+      padding: 5px 10px;
+    }
+    .legenda {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      font-family: sans-serif;
+      font-size: 14px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    }
+    .legenda-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+    .bolinha {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 8px;
+      border: 1px solid #555;
+    }
+  </style>
+</head>
+<body>
 
-      .legenda {
-        position: absolute;
-        bottom: 10px;
-        right: 10px;
-        background: white;
-        padding: 10px;
-        border-radius: 8px;
-        font-family: sans-serif;
-        font-size: 14px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-      }
-      .legenda-item {
-        display: flex;
-        align-items: center;
-        margin-bottom: 5px;
-      }
-      .bolinha {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        margin-right: 8px;
-        border: 1px solid #555;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="painel-busca">
-      <input type="text" id="busca-id" placeholder="Buscar por ID do poste" />
-      <input type="text" id="busca-coord" placeholder="Latitude,Longitude" />
-      <button onclick="buscarID()">🔍 ID</button>
-      <button onclick="buscarCoordenada()">📍 Coordenada</button>
+  <div class="painel-busca">
+    <input type="text" id="busca-id" placeholder="Buscar por ID do poste" />
+    <input type="text" id="busca-coord" placeholder="Latitude,Longitude" />
+    <button onclick="buscarID()">🔍 ID</button>
+    <button onclick="buscarCoordenada()">📍 Coordenada</button>
+  </div>
+
+  <div class="legenda">
+    <div class="legenda-item">
+      <div class="bolinha" style="background: green;"></div>
+      Até 5 empresas
     </div>
-
-    <div class="legenda">
-      <div class="legenda-item">
-        <div class="bolinha" style="background: green;"></div>
-        Até 5 empresas
-      </div>
-      <div class="legenda-item">
-        <div class="bolinha" style="background: red;"></div>
-        Mais de 5 empresas
-      </div>
+    <div class="legenda-item">
+      <div class="bolinha" style="background: red;"></div>
+      Mais de 5 empresas
     </div>
+  </div>
 
-    <div id="map"></div>
+  <div id="map"></div>
 
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
-    <script>
-      const map = L.map('map').setView([-23.2, -45.9], 12);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+  <script>
+    const map = L.map('map').setView([-23.2, -45.9], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-      const markers = L.layerGroup();
-      const todosPostes = [];
+    const markers = L.markerClusterGroup({
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: false,
+      maxClusterRadius: 60
+    });
 
-      fetch("/api/postes")
-        .then(res => res.json())
-        .then(data => {
-          data.forEach(poste => {
-            if (!poste.coordenadas) return;
-            const [lat, lon] = poste.coordenadas.split(',').map(Number);
-            if (isNaN(lat) || isNaN(lon)) return;
+    markers.on('clusterclick', function (a) {
+      a.layer.spiderfy(); // explode em círculo ao clicar
+    });
 
-            const qtdEmpresas = poste.empresas.split(',').length;
-            const cor = qtdEmpresas > 5 ? 'red' : 'green';
+    const todosPostes = [];
 
-            const icone = L.divIcon({
-              className: '',
-              html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
-              iconSize: [16, 16],
-              iconAnchor: [8, 8],
-            });
+    fetch("/api/postes")
+      .then(res => res.json())
+      .then(data => {
+        data.forEach(poste => {
+          if (!poste.coordenadas) return;
+          const [lat, lon] = poste.coordenadas.split(',').map(Number);
+          if (isNaN(lat) || isNaN(lon)) return;
 
-            const marker = L.marker([lat, lon], { icon: icone });
-            marker.bindPopup(`<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b> ${poste.empresas}`);
-            marker.addTo(markers);
+          const qtdEmpresas = poste.empresas.split(',').length;
+          const cor = qtdEmpresas > 5 ? 'red' : 'green';
 
-            todosPostes.push({ ...poste, lat, lon });
+          const icone = L.divIcon({
+            className: '',
+            html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
+            iconSize: [16, 16],
+            iconAnchor: [8, 8],
           });
-          markers.addTo(map);
+
+          const marker = L.marker([lat, lon], { icon: icone });
+          marker.bindPopup(`<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b> ${poste.empresas}`);
+          markers.addLayer(marker);
+
+          todosPostes.push({ ...poste, lat, lon });
         });
 
-      function buscarID() {
-        const id = document.getElementById("busca-id").value.trim();
-        const resultado = todosPostes.find(p => p.id_poste.toString() === id);
-        if (resultado) {
-          map.setView([resultado.lat, resultado.lon], 18);
-          L.popup().setLatLng([resultado.lat, resultado.lon])
-                   .setContent(`<b>ID:</b> ${resultado.id_poste}<br><b>Empresas:</b> ${resultado.empresas}`)
-                   .openOn(map);
-        } else {
-          alert("Poste não encontrado.");
-        }
-      }
+        map.addLayer(markers);
+      });
 
-      function buscarCoordenada() {
-        const coordInput = document.getElementById("busca-coord").value.trim();
-        const partes = coordInput.split(",");
-        if (partes.length !== 2) return alert("Use o formato: lat,lon");
-        const lat = parseFloat(partes[0]);
-        const lon = parseFloat(partes[1]);
-        if (isNaN(lat) || isNaN(lon)) return alert("Coordenadas inválidas.");
-
-        map.setView([lat, lon], 18);
-        L.popup().setLatLng([lat, lon])
-                 .setContent(`<b>Coordenada:</b><br>${lat}, ${lon}`)
+    function buscarID() {
+      const id = document.getElementById("busca-id").value.trim();
+      const resultado = todosPostes.find(p => p.id_poste.toString() === id);
+      if (resultado) {
+        map.setView([resultado.lat, resultado.lon], 18);
+        L.popup().setLatLng([resultado.lat, resultado.lon])
+                 .setContent(`<b>ID:</b> ${resultado.id_poste}<br><b>Empresas:</b> ${resultado.empresas}`)
                  .openOn(map);
+      } else {
+        alert("Poste não encontrado.");
       }
-    </script>
-  </body>
+    }
+
+    function buscarCoordenada() {
+      const coordInput = document.getElementById("busca-coord").value.trim();
+      const partes = coordInput.split(",");
+      if (partes.length !== 2) return alert("Use o formato: lat,lon");
+      const lat = parseFloat(partes[0]);
+      const lon = parseFloat(partes[1]);
+      if (isNaN(lat) || isNaN(lon)) return alert("Coordenadas inválidas.");
+
+      map.setView([lat, lon], 18);
+      L.popup().setLatLng([lat, lon])
+               .setContent(`<b>Coordenada:</b><br>${lat}, ${lon}`)
+               .openOn(map);
+    }
+  </script>
+</body>
 </html>
