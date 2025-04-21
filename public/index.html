@@ -29,7 +29,7 @@
     }
     .painel-busca input {
       margin-bottom: 5px;
-      width: 180px;
+      width: 200px;
       padding: 5px;
       display: block;
     }
@@ -68,8 +68,12 @@
   <div class="painel-busca">
     <input type="text" id="busca-id" placeholder="Buscar por ID do poste" />
     <input type="text" id="busca-coord" placeholder="Latitude,Longitude" />
+    <input type="text" id="filtro-empresa" list="lista-empresas" placeholder="Filtrar por empresa" />
+    <datalist id="lista-empresas"></datalist>
     <button onclick="buscarID()">🔍 ID</button>
     <button onclick="buscarCoordenada()">📍 Coordenada</button>
+    <button onclick="filtrarEmpresa()">🏢 Filtrar</button>
+    <button onclick="resetarMapa()">🔄 Mostrar tudo</button>
   </div>
 
   <div class="legenda">
@@ -96,14 +100,15 @@
       showCoverageOnHover: false,
       zoomToBoundsOnClick: false,
       maxClusterRadius: 60,
-      disableClusteringAtZoom: 17 // 👈 MOSTRA MARCADORES INDIVIDUAIS A PARTIR DO ZOOM 17
+      disableClusteringAtZoom: 17
     });
 
     markers.on('clusterclick', function (a) {
-      a.layer.spiderfy(); // explode em círculo ao clicar no cluster
+      a.layer.spiderfy();
     });
 
     const todosPostes = [];
+    const empresasContagem = {};
 
     fetch("/api/postes")
       .then(res => res.json())
@@ -113,7 +118,14 @@
           const [lat, lon] = poste.coordenadas.split(',').map(Number);
           if (isNaN(lat) || isNaN(lon)) return;
 
-          const qtdEmpresas = poste.empresas.split(',').length;
+          const empresas = poste.empresas.split(',').map(e => e.trim());
+
+          empresas.forEach(empresa => {
+            if (!empresasContagem[empresa]) empresasContagem[empresa] = 0;
+            empresasContagem[empresa]++;
+          });
+
+          const qtdEmpresas = empresas.length;
           const cor = qtdEmpresas > 5 ? 'red' : 'green';
 
           const icone = L.divIcon({
@@ -125,13 +137,26 @@
 
           const marker = L.marker([lat, lon], { icon: icone });
           marker.bindPopup(`<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b> ${poste.empresas}`);
+          marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, { direction: "top" });
           markers.addLayer(marker);
 
           todosPostes.push({ ...poste, lat, lon });
         });
 
         map.addLayer(markers);
+        preencherAutocomplete();
       });
+
+    function preencherAutocomplete() {
+      const lista = document.getElementById("lista-empresas");
+      lista.innerHTML = '';
+      Object.keys(empresasContagem).sort().forEach(empresa => {
+        const option = document.createElement("option");
+        option.value = empresa;
+        option.label = `${empresa} (${empresasContagem[empresa]} postes)`;
+        lista.appendChild(option);
+      });
+    }
 
     function buscarID() {
       const id = document.getElementById("busca-id").value.trim();
@@ -158,6 +183,53 @@
       L.popup().setLatLng([lat, lon])
                .setContent(`<b>Coordenada:</b><br>${lat}, ${lon}`)
                .openOn(map);
+    }
+
+    function filtrarEmpresa() {
+      const termo = document.getElementById("filtro-empresa").value.trim().toLowerCase();
+      if (!termo) return;
+
+      markers.clearLayers();
+
+      todosPostes.forEach(poste => {
+        if (!poste.empresas.toLowerCase().includes(termo)) return;
+
+        const qtdEmpresas = poste.empresas.split(',').length;
+        const cor = qtdEmpresas > 5 ? 'red' : 'green';
+
+        const icone = L.divIcon({
+          className: '',
+          html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
+        });
+
+        const marker = L.marker([poste.lat, poste.lon], { icon: icone });
+        marker.bindPopup(`<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b> ${poste.empresas}`);
+        marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, { direction: "top" });
+        markers.addLayer(marker);
+      });
+    }
+
+    function resetarMapa() {
+      markers.clearLayers();
+
+      todosPostes.forEach(poste => {
+        const qtdEmpresas = poste.empresas.split(',').length;
+        const cor = qtdEmpresas > 5 ? 'red' : 'green';
+
+        const icone = L.divIcon({
+          className: '',
+          html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
+        });
+
+        const marker = L.marker([poste.lat, poste.lon], { icon: icone });
+        marker.bindPopup(`<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b> ${poste.empresas}`);
+        marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, { direction: "top" });
+        markers.addLayer(marker);
+      });
     }
   </script>
 </body>
