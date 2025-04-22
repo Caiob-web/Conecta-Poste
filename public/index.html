@@ -7,7 +7,8 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
     <style>
-      html, body {
+      html,
+      body {
         margin: 0;
         padding: 0;
         height: 100%;
@@ -75,8 +76,6 @@
       <button onclick="filtrarEmpresa()">🏢 Filtrar</button>
       <button onclick="resetarMapa()">🔄 Mostrar tudo</button>
       <button onclick="buscarPorRua()">🛣 Rua</button>
-      <button onclick="limparBusca()">🧹 Limpar</button>
-      <div id="resumo-rua" style="margin-top: 10px; font-size: 14px"></div>
     </div>
 
     <div class="legenda">
@@ -106,7 +105,9 @@
         disableClusteringAtZoom: 17,
       });
 
-      markers.on("clusterclick", (a) => a.layer.spiderfy());
+      markers.on("clusterclick", function (a) {
+        a.layer.spiderfy();
+      });
 
       const todosPostes = [];
       const empresasContagem = {};
@@ -136,13 +137,16 @@
             });
 
             const marker = L.marker([lat, lon], { icon: icone });
-            marker.bindPopup(`<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b> ${poste.empresas}`);
-            marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, { direction: "top" });
+            marker.bindPopup(
+              `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b> ${poste.empresas}`
+            );
+            marker.bindTooltip(
+              `ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`,
+              { direction: "top" }
+            );
             markers.addLayer(marker);
-
             todosPostes.push({ ...poste, lat, lon });
           });
-
           map.addLayer(markers);
           preencherAutocomplete();
         });
@@ -167,7 +171,9 @@
           map.setView([resultado.lat, resultado.lon], 18);
           L.popup()
             .setLatLng([resultado.lat, resultado.lon])
-            .setContent(`<b>ID:</b> ${resultado.id_poste}<br><b>Empresas:</b> ${resultado.empresas}`)
+            .setContent(
+              `<b>ID:</b> ${resultado.id_poste}<br><b>Empresas:</b> ${resultado.empresas}`
+            )
             .openOn(map);
         } else {
           alert("Poste não encontrado.");
@@ -183,7 +189,10 @@
         if (isNaN(lat) || isNaN(lon)) return alert("Coordenadas inválidas.");
 
         map.setView([lat, lon], 18);
-        L.popup().setLatLng([lat, lon]).setContent(`<b>Coordenada:</b><br>${lat}, ${lon}`).openOn(map);
+        L.popup()
+          .setLatLng([lat, lon])
+          .setContent(`<b>Coordenada:</b><br>${lat}, ${lon}`)
+          .openOn(map);
       }
 
       function filtrarEmpresa() {
@@ -193,86 +202,52 @@
 
         todosPostes.forEach((poste) => {
           if (!poste.empresas.toLowerCase().includes(termo)) return;
-          const qtdEmpresas = poste.empresas.split(",").length;
-          const cor = qtdEmpresas >= 5 ? "red" : "green";
-
-          const icone = L.divIcon({
-            className: "",
-            html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`
-          });
-
-          const marker = L.marker([poste.lat, poste.lon], { icon: icone });
-          marker.bindPopup(`<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b> ${poste.empresas}`);
-          marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, { direction: "top" });
-          markers.addLayer(marker);
+          adicionarPosteNoMapa(poste);
         });
       }
 
       function resetarMapa() {
         markers.clearLayers();
-        todosPostes.forEach((poste) => {
-          const qtdEmpresas = poste.empresas.split(",").length;
-          const cor = qtdEmpresas >= 5 ? "red" : "green";
-
-          const icone = L.divIcon({
-            className: "",
-            html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`
-          });
-
-          const marker = L.marker([poste.lat, poste.lon], { icon: icone });
-          marker.bindPopup(`<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b> ${poste.empresas}`);
-          marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, { direction: "top" });
-          markers.addLayer(marker);
-        });
+        todosPostes.forEach(adicionarPosteNoMapa);
       }
 
-      function limparBusca() {
-        document.getElementById("busca-id").value = "";
-        document.getElementById("busca-coord").value = "";
-        document.getElementById("filtro-empresa").value = "";
-        document.getElementById("busca-rua").value = "";
-        document.getElementById("resumo-rua").innerHTML = "";
-        resetarMapa();
+      function adicionarPosteNoMapa(poste) {
+        const qtdEmpresas = poste.empresas.split(",").length;
+        const cor = qtdEmpresas >= 5 ? "red" : "green";
+
+        const icone = L.divIcon({
+          className: "",
+          html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
+        });
+
+        const marker = L.marker([poste.lat, poste.lon], { icon: icone });
+        marker.bindPopup(`<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b> ${poste.empresas}`);
+        marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
+          direction: "top",
+        });
+        markers.addLayer(marker);
       }
 
       async function buscarPorRua() {
         const rua = document.getElementById("busca-rua").value.trim();
-        const resumoDiv = document.getElementById("resumo-rua");
-        resumoDiv.innerHTML = "";
+        if (!rua) return alert("Digite o nome da rua.");
 
-        if (!rua) {
-          resumoDiv.innerHTML = "<span style='color:red;'>Digite o nome da rua.</span>";
-          return;
-        }
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          rua + " São José dos Campos"
+        )}`;
 
         try {
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(rua)}, São José dos Campos, Brasil&limit=1`,
-            {
-              headers: {
-                "User-Agent": "poste-mapa-app"
-              }
-            }
-          );
-
+          const response = await fetch(url);
           const resultados = await response.json();
+          if (!resultados.length) return alert("Rua não encontrada.");
 
-          if (!resultados.length) {
-            resumoDiv.innerHTML = `<span style='color:red;'>Rua não encontrada: <b>${rua}</b></span>`;
-            return;
-          }
-
-          const { lat, lon, display_name } = resultados[0];
+          const { lat, lon } = resultados[0];
           map.setView([parseFloat(lat), parseFloat(lon)], 17);
-
-          resumoDiv.innerHTML = `
-            <b>Centralizado na rua:</b> ${display_name}<br>
-            Coordenadas aproximadas: ${lat}, ${lon}<br>
-            <i>Verifique visualmente os postes no mapa.</i>
-          `;
-        } catch (error) {
-          console.error("Erro ao buscar rua:", error);
-          resumoDiv.innerHTML = "<span style='color:red;'>Erro ao buscar rua. Tente novamente.</span>";
+        } catch (err) {
+          console.error("Erro ao buscar rua:", err);
+          alert("Erro ao buscar rua.");
         }
       }
     </script>
