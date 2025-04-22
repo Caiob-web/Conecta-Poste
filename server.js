@@ -6,27 +6,26 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(cors());
-app.use(express.static("public"));
+app.use(express.static("public")); // frontend estático
 
+// 🔄 NOVA CONEXÃO COM O RAILWAY
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false,
-  },
+  connectionString: "postgresql://postgres:PqaBAbgwBoKAIEnyIDNKeorFOgMELWNI@ballast.proxy.rlwy.net:58816/railway",
+  ssl: { rejectUnauthorized: false },
 });
 
+// 🔍 ENDPOINT PARA BUSCAR OS POSTES
 app.get("/api/postes", async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT 
         id_poste,
-        STRING_AGG(empresa, ', ') AS empresas,
+        STRING_AGG(DISTINCT UPPER(TRIM(empresa)), ', ') AS empresas,
         coordenadas
       FROM dados_poste
-      WHERE coordenadas IS NOT NULL
+      WHERE coordenadas IS NOT NULL AND TRIM(coordenadas) <> ''
       GROUP BY id_poste, coordenadas
     `);
-
     res.json(rows);
   } catch (err) {
     console.error("Erro ao buscar dados:", err);
@@ -39,5 +38,5 @@ app.use((req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`✅ Servidor rodando na porta ${port}`);
+  console.log(`🚀 Servidor rodando na porta ${port}`);
 });
