@@ -78,10 +78,13 @@
         placeholder="Filtrar por empresa"
       />
       <datalist id="lista-empresas"></datalist>
+      <input type="text" id="busca-rua" placeholder="Buscar por rua" />
       <button onclick="buscarID()">🔍 ID</button>
       <button onclick="buscarCoordenada()">📍 Coordenada</button>
       <button onclick="filtrarEmpresa()">🏢 Filtrar</button>
       <button onclick="resetarMapa()">🔄 Mostrar tudo</button>
+      <button onclick="buscarPorRua()">🛣 Rua</button>
+      <div id="resumo-rua" style="margin-top: 10px; font-size: 14px"></div>
     </div>
 
     <div class="legenda">
@@ -259,69 +262,75 @@
           markers.addLayer(marker);
         });
       }
+
+      async function buscarPorRua() {
+        const rua = document.getElementById("busca-rua").value.trim();
+        const resumoDiv = document.getElementById("resumo-rua");
+        resumoDiv.innerHTML = "";
+
+        if (!rua) {
+          resumoDiv.innerHTML =
+            "<span style='color:red;'>Digite o nome da rua.</span>";
+          return;
+        }
+
+        const res = await fetch(
+          `/api/postes/rua?nome=${encodeURIComponent(rua)}`
+        );
+        const data = await res.json();
+
+        if (!data.postes || data.postes.length === 0) {
+          resumoDiv.innerHTML = `<span style='color:red;'>Nenhum poste encontrado para a rua: <b>${rua}</b></span>`;
+          return;
+        }
+
+        markers.clearLayers();
+
+        let totalLat = 0;
+        let totalLon = 0;
+
+        data.postes.forEach((poste) => {
+          const [lat, lon] = poste.coordenadas.split(",").map(Number);
+          if (isNaN(lat) || isNaN(lon)) return;
+
+          totalLat += lat;
+          totalLon += lon;
+
+          const cor = poste.qtd_empresas >= 5 ? "red" : "green";
+
+          const icone = L.divIcon({
+            className: "",
+            html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
+            iconSize: [16, 16],
+            iconAnchor: [8, 8],
+          });
+
+          const marker = L.marker([lat, lon], { icon: icone });
+          marker.bindPopup(
+            `<b>ID do Poste:</b> ${
+              poste.id_poste
+            }<br><b>Empresas:</b> ${poste.empresas.join(", ")}`
+          );
+          marker.bindTooltip(
+            `ID: ${poste.id_poste} • ${poste.qtd_empresas} empresa(s)`,
+            { direction: "top" }
+          );
+          markers.addLayer(marker);
+        });
+
+        map.addLayer(markers);
+        map.setView(
+          [totalLat / data.postes.length, totalLon / data.postes.length],
+          15
+        );
+
+        resumoDiv.innerHTML = `
+          <b>Resumo da Rua:</b> ${rua}<br>
+          Total de Postes: <b>${data.total}</b><br>
+          <span style="color:green;">Verdes (≤ 4 empresas): ${data.verdes}</span><br>
+          <span style="color:red;">Vermelhos (≥ 5 empresas): ${data.vermelhos}</span>
+        `;
+      }
     </script>
   </body>
 </html>
-<!-- Adicione este input no painel de busca -->
-<input type="text" id="busca-rua" placeholder="Buscar por rua" />
-<button onclick="buscarPorRua()">🛣 Rua</button>
-
-<script>
-  function buscarPorRua() {
-    const termoRua = document
-      .getElementById("busca-rua")
-      .value.trim()
-      .toLowerCase();
-    if (!termoRua) return alert("Digite uma rua válida.");
-
-    markers.clearLayers();
-
-    const encontrados = todosPostes.filter((poste) => {
-      if (!poste.resumo) return false;
-      return poste.resumo.toLowerCase().includes(termoRua);
-    });
-
-    if (encontrados.length === 0) {
-      alert("Nenhum poste encontrado nesta rua.");
-      return;
-    }
-
-    let verdes = 0;
-    let vermelhos = 0;
-
-    encontrados.forEach((poste) => {
-      const qtdEmpresas = poste.empresas.split(",").length;
-      const cor = qtdEmpresas > 4 ? "red" : "green";
-      if (cor === "red") vermelhos++;
-      else verdes++;
-
-      const icone = L.divIcon({
-        className: "",
-        html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
-        iconSize: [16, 16],
-        iconAnchor: [8, 8],
-      });
-
-      const marker = L.marker([poste.lat, poste.lon], { icon: icone });
-      marker.bindPopup(
-        `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b> ${poste.empresas}`
-      );
-      marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
-        direction: "top",
-      });
-      markers.addLayer(marker);
-    });
-
-    map.addLayer(markers);
-
-    const mediaLat =
-      encontrados.reduce((acc, p) => acc + p.lat, 0) / encontrados.length;
-    const mediaLon =
-      encontrados.reduce((acc, p) => acc + p.lon, 0) / encontrados.length;
-    map.setView([mediaLat, mediaLon], 15);
-
-    alert(
-      `Rua encontrada com ${encontrados.length} postes.\nVerdes: ${verdes} | Vermelhos: ${vermelhos}`
-    );
-  }
-</script>
