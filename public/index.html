@@ -274,62 +274,32 @@
           return;
         }
 
-        const res = await fetch(
-          `/api/postes/rua?nome=${encodeURIComponent(rua)}`
-        );
-        const data = await res.json();
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+              rua
+            )}, São José dos Campos`
+          );
+          const resultados = await response.json();
 
-        if (!data.postes || data.postes.length === 0) {
-          resumoDiv.innerHTML = `<span style='color:red;'>Nenhum poste encontrado para a rua: <b>${rua}</b></span>`;
-          return;
+          if (resultados.length === 0) {
+            resumoDiv.innerHTML = `<span style='color:red;'>Rua não encontrada: <b>${rua}</b></span>`;
+            return;
+          }
+
+          const { lat, lon } = resultados[0];
+          map.setView([parseFloat(lat), parseFloat(lon)], 17);
+
+          resumoDiv.innerHTML = `
+            <b>Centralizado na rua:</b> ${rua}<br>
+            Coordenadas aproximadas: ${lat}, ${lon}<br>
+            <i>Postes na região devem ser verificados visualmente no mapa.</i>
+          `;
+        } catch (error) {
+          console.error("Erro ao buscar rua:", error);
+          resumoDiv.innerHTML =
+            "<span style='color:red;'>Erro ao buscar rua. Tente novamente.</span>";
         }
-
-        markers.clearLayers();
-
-        let totalLat = 0;
-        let totalLon = 0;
-
-        data.postes.forEach((poste) => {
-          const [lat, lon] = poste.coordenadas.split(",").map(Number);
-          if (isNaN(lat) || isNaN(lon)) return;
-
-          totalLat += lat;
-          totalLon += lon;
-
-          const cor = poste.qtd_empresas >= 5 ? "red" : "green";
-
-          const icone = L.divIcon({
-            className: "",
-            html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
-            iconSize: [16, 16],
-            iconAnchor: [8, 8],
-          });
-
-          const marker = L.marker([lat, lon], { icon: icone });
-          marker.bindPopup(
-            `<b>ID do Poste:</b> ${
-              poste.id_poste
-            }<br><b>Empresas:</b> ${poste.empresas.join(", ")}`
-          );
-          marker.bindTooltip(
-            `ID: ${poste.id_poste} • ${poste.qtd_empresas} empresa(s)`,
-            { direction: "top" }
-          );
-          markers.addLayer(marker);
-        });
-
-        map.addLayer(markers);
-        map.setView(
-          [totalLat / data.postes.length, totalLon / data.postes.length],
-          15
-        );
-
-        resumoDiv.innerHTML = `
-          <b>Resumo da Rua:</b> ${rua}<br>
-          Total de Postes: <b>${data.total}</b><br>
-          <span style="color:green;">Verdes (≤ 4 empresas): ${data.verdes}</span><br>
-          <span style="color:red;">Vermelhos (≥ 5 empresas): ${data.vermelhos}</span>
-        `;
       }
     </script>
   </body>
