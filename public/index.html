@@ -262,7 +262,6 @@
           markers.addLayer(marker);
         });
       }
-
       async function buscarPorRua() {
         const rua = document.getElementById("busca-rua").value.trim();
         const resumoDiv = document.getElementById("resumo-rua");
@@ -288,13 +287,67 @@
           }
 
           const { lat, lon } = resultados[0];
-          map.setView([parseFloat(lat), parseFloat(lon)], 17);
+          const centroLat = parseFloat(lat);
+          const centroLon = parseFloat(lon);
+
+          const distancia = (lat1, lon1, lat2, lon2) => {
+            const R = 6371e3;
+            const rad = (deg) => (deg * Math.PI) / 180;
+            const dLat = rad(lat2 - lat1);
+            const dLon = rad(lon2 - lon1);
+            const a =
+              Math.sin(dLat / 2) ** 2 +
+              Math.cos(rad(lat1)) *
+                Math.cos(rad(lat2)) *
+                Math.sin(dLon / 2) ** 2;
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+          };
+
+          const encontrados = todosPostes.filter((poste) => {
+            return (
+              distancia(centroLat, centroLon, poste.lat, poste.lon) <= 1000
+            );
+          });
+
+          let verdes = 0;
+          let vermelhos = 0;
+
+          markers.clearLayers();
+
+          encontrados.forEach((poste) => {
+            const qtdEmpresas = poste.empresas.split(",").length;
+            const cor = qtdEmpresas >= 5 ? "red" : "green";
+            if (cor === "red") vermelhos++;
+            else verdes++;
+
+            const icone = L.divIcon({
+              className: "",
+              html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
+              iconSize: [16, 16],
+              iconAnchor: [8, 8],
+            });
+
+            const marker = L.marker([poste.lat, poste.lon], { icon: icone });
+            marker.bindPopup(
+              `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b> ${poste.empresas}`
+            );
+            marker.bindTooltip(
+              `ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`,
+              { direction: "top" }
+            );
+            markers.addLayer(marker);
+          });
+
+          map.setView([centroLat, centroLon], 15);
+          map.addLayer(markers);
 
           resumoDiv.innerHTML = `
-            <b>Centralizado na rua:</b> ${rua}<br>
-            Coordenadas aproximadas: ${lat}, ${lon}<br>
-            <i>Postes na região devem ser verificados visualmente no mapa.</i>
-          `;
+        <b>Resumo da Rua (raio de 1km):</b> ${rua}<br>
+        Total de Postes: <b>${encontrados.length}</b><br>
+        <span style="color:green;">Verdes (≤ 4 empresas): ${verdes}</span><br>
+        <span style="color:red;">Vermelhos (≥ 5 empresas): ${vermelhos}</span>
+      `;
         } catch (error) {
           console.error("Erro ao buscar rua:", error);
           resumoDiv.innerHTML =
