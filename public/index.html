@@ -231,25 +231,39 @@
       }
 
       async function buscarPorRua() {
-        const rua = document.getElementById("busca-rua").value.trim();
-        if (!rua) return alert("Digite o nome da rua.");
+  const rua = document.getElementById("busca-rua").value.trim();
+  if (!rua) return alert("Digite o nome da rua.");
 
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-          rua + " São José dos Campos"
-        )}`;
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1&q=${encodeURIComponent(rua + ", São José dos Campos, Brasil")}`;
 
-        try {
-          const response = await fetch(url);
-          const resultados = await response.json();
-          if (!resultados.length) return alert("Rua não encontrada.");
-
-          const { lat, lon } = resultados[0];
-          map.setView([parseFloat(lat), parseFloat(lon)], 17);
-        } catch (err) {
-          console.error("Erro ao buscar rua:", err);
-          alert("Erro ao buscar rua.");
-        }
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'Accept-Language': 'pt-BR'
       }
+    });
+    const resultados = await response.json();
+
+    if (!resultados.length) {
+      alert("Rua não encontrada.");
+      return;
+    }
+
+    const resultado = resultados[0];
+    const lat = parseFloat(resultado.lat);
+    const lon = parseFloat(resultado.lon);
+
+    if (isNaN(lat) || isNaN(lon)) {
+      alert("Coordenadas inválidas retornadas.");
+      return;
+    }
+
+    map.setView([lat, lon], 17);
+  } catch (err) {
+    console.error("Erro ao buscar rua:", err);
+    alert("Erro ao buscar rua. Verifique sua conexão ou tente outro nome.");
+  }
+}
     </script>
   </body>
 </html>
