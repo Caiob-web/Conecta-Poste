@@ -351,7 +351,7 @@
             (position) => {
               const lat = position.coords.latitude;
               const lon = position.coords.longitude;
-              map.setView([lat, lon], 17);
+              map.flyTo([lat, lon], 17, { duration: 1.2 });
               L.popup()
                 .setLatLng([lat, lon])
                 .setContent(
