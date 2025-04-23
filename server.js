@@ -45,3 +45,7 @@ app.use((req, res) => {
 app.listen(port, () => {
   console.log(`🚀 Servidor rodando na porta ${port}`);
 });
+function alternarPainel() {
+  const painel = document.querySelector('.painel-busca');
+  painel.classList.toggle('hidden');
+}
