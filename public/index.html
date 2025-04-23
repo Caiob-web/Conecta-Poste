@@ -69,6 +69,32 @@
     </style>
   </head>
   <body>
+    <!-- Botões fixos -->
+    <button
+      onclick="togglePainel()"
+      style="
+        position: absolute;
+        top: 10px;
+        right: 300px;
+        z-index: 1001;
+        padding: 6px 10px;
+      "
+    >
+      ☰ Painel
+    </button>
+    <button
+      onclick="centralizarNoLocal()"
+      style="
+        position: absolute;
+        top: 50px;
+        right: 300px;
+        z-index: 1001;
+        padding: 6px 10px;
+      "
+    >
+      📍 Meu Local
+    </button>
+
     <div class="painel-busca">
       <input type="text" id="busca-id" placeholder="Buscar por ID do poste" />
       <input type="text" id="busca-coord" placeholder="Latitude,Longitude" />
@@ -287,9 +313,7 @@
               rua
             )}, São José dos Campos, Brasil&limit=1`,
             {
-              headers: {
-                "User-Agent": "poste-mapa-app",
-              },
+              headers: { "User-Agent": "poste-mapa-app" },
             }
           );
 
@@ -312,6 +336,37 @@
           console.error("Erro ao buscar rua:", error);
           resumoDiv.innerHTML =
             "<span style='color:red;'>Erro ao buscar rua. Tente novamente.</span>";
+        }
+      }
+
+      function togglePainel() {
+        const painel = document.querySelector(".painel-busca");
+        painel.style.display =
+          painel.style.display === "none" ? "block" : "none";
+      }
+
+      function centralizarNoLocal() {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const lat = position.coords.latitude;
+              const lon = position.coords.longitude;
+              map.setView([lat, lon], 17);
+              L.popup()
+                .setLatLng([lat, lon])
+                .setContent(
+                  `<b>Você está aqui:</b><br>${lat.toFixed(6)}, ${lon.toFixed(
+                    6
+                  )}`
+                )
+                .openOn(map);
+            },
+            () => {
+              alert("Não foi possível acessar sua localização.");
+            }
+          );
+        } else {
+          alert("Geolocalização não suportada pelo navegador.");
         }
       }
     </script>
