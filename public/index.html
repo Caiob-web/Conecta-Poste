@@ -66,6 +66,20 @@
         margin-right: 8px;
         border: 1px solid #555;
       }
+      #mensagem-zoom {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 15px 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        z-index: 2000;
+        font-family: sans-serif;
+        font-size: 16px;
+        display: none;
+      }
     </style>
   </head>
   <body>
@@ -127,11 +141,14 @@
     </div>
 
     <div id="map"></div>
+    <div id="mensagem-zoom">
+      🔍 Aumente o zoom para carregar os postes
+    </div>
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
     <script>
-     const map = L.map("map", { preferCanvas: true }).setView([-23.2, -45.9], 12);
+      const map = L.map("map", { preferCanvas: true }).setView([-23.2, -45.9], 12);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(
         map
       );
@@ -149,46 +166,64 @@
       const todosPostes = [];
       const empresasContagem = {};
 
-      fetch("/api/postes")
-        .then((res) => res.json())
-        .then((data) => {
-          data.forEach((poste) => {
-            if (!poste.coordenadas) return;
-            const [lat, lon] = poste.coordenadas.split(",").map(Number);
-            if (isNaN(lat) || isNaN(lon)) return;
+      function carregarPostesVisiveis() {
+        const zoomMinimo = 13;
+        const mensagemZoom = document.getElementById("mensagem-zoom");
 
-            const empresas = poste.empresas.split(",").map((e) => e.trim());
-            empresas.forEach((empresa) => {
-              if (!empresasContagem[empresa]) empresasContagem[empresa] = 0;
-              empresasContagem[empresa]++;
+        if (map.getZoom() < zoomMinimo) {
+          mensagemZoom.style.display = "block";
+          markers.clearLayers();
+          return;
+        } else {
+          mensagemZoom.style.display = "none";
+        }
+
+        const bounds = map.getBounds();
+        const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
+
+        fetch(`/api/postes_bbox?bbox=${bbox}`)
+          .then((res) => res.json())
+          .then((data) => {
+            markers.clearLayers();
+            todosPostes.length = 0;
+
+            data.forEach((poste) => {
+              if (!poste.coordenadas) return;
+              const [lat, lon] = poste.coordenadas.split(",").map(Number);
+              if (isNaN(lat) || isNaN(lon)) return;
+
+              const empresas = poste.empresas.split(",").map((e) => e.trim());
+              empresas.forEach((empresa) => {
+                if (!empresasContagem[empresa]) empresasContagem[empresa] = 0;
+                empresasContagem[empresa]++;
+              });
+
+              const qtdEmpresas = empresas.length;
+              const cor = qtdEmpresas >= 5 ? "red" : "green";
+
+              const icone = L.divIcon({
+                className: "",
+                html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
+                iconSize: [16, 16],
+                iconAnchor: [8, 8],
+              });
+
+              const marker = L.marker([lat, lon], { icon: icone });
+              marker.bindPopup(
+                `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b> ${poste.empresas}`
+              );
+              marker.bindTooltip(
+                `ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`,
+                { direction: "top" }
+              );
+              markers.addLayer(marker);
+
+              todosPostes.push({ ...poste, lat, lon });
             });
-
-            const qtdEmpresas = empresas.length;
-            const cor = qtdEmpresas >= 5 ? "red" : "green";
-
-            const icone = L.divIcon({
-              className: "",
-              html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
-              iconSize: [16, 16],
-              iconAnchor: [8, 8],
-            });
-
-            const marker = L.marker([lat, lon], { icon: icone });
-            marker.bindPopup(
-              `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b> ${poste.empresas}`
-            );
-            marker.bindTooltip(
-              `ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`,
-              { direction: "top" }
-            );
-            markers.addLayer(marker);
-
-            todosPostes.push({ ...poste, lat, lon });
+            
+            preencherAutocomplete();
           });
-
-          map.addLayer(markers);
-          preencherAutocomplete();
-        });
+      }
 
       function preencherAutocomplete() {
         const lista = document.getElementById("lista-empresas");
@@ -369,50 +404,11 @@
           alert("Geolocalização não suportada pelo navegador.");
         }
       }
-      // 🔄 Função para carregar apenas os postes visíveis no mapa
-      function carregarPostesVisiveis() {
-        const bounds = map.getBounds();
-        const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
 
-        fetch(`/api/postes_bbox?bbox=${bbox}`)
-          .then((res) => res.json())
-          .then((data) => {
-            markers.clearLayers();
-            todosPostes.length = 0;
-
-            data.forEach((poste) => {
-              if (!poste.coordenadas) return;
-              const [lat, lon] = poste.coordenadas.split(",").map(Number);
-              if (isNaN(lat) || isNaN(lon)) return;
-
-              const empresas = poste.empresas.split(",").map((e) => e.trim());
-              const qtdEmpresas = empresas.length;
-              const cor = qtdEmpresas >= 5 ? "red" : "green";
-
-              const icone = L.divIcon({
-                className: "",
-                html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
-                iconSize: [16, 16],
-                iconAnchor: [8, 8],
-              });
-
-              const marker = L.marker([lat, lon], { icon: icone });
-              marker.bindPopup(
-                `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b> ${poste.empresas}`
-              );
-              marker.bindTooltip(
-                `ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`,
-                { direction: "top" }
-              );
-              markers.addLayer(marker);
-
-              todosPostes.push({ ...poste, lat, lon });
-            });
-          });
-      }
-      // 🚀 Carrega os postes visíveis após cada movimentação do mapa
+      // Carrega os postes visíveis após cada movimentação do mapa
       map.on("moveend", carregarPostesVisiveis);
-      // ✅ Carrega a primeira vez ao abrir o mapa
+      
+      // Carrega a primeira vez ao abrir o mapa
       carregarPostesVisiveis();
     </script>
   </body>
