@@ -94,30 +94,7 @@
     >
       📍 Meu Local
     </button>
-    <button
-      onclick="novoTraçado()"
-      style="
-        position: absolute;
-        top: 90px;
-        right: 300px;
-        z-index: 1001;
-        padding: 6px 10px;
-      "
-    >
-      ➕ Novo Traçado
-    </button>
-    <button
-      onclick="apagarTodosTraçados()"
-      style="
-        position: absolute;
-        top: 130px;
-        right: 300px;
-        z-index: 1001;
-        padding: 6px 10px;
-      "
-    >
-      🗑 Apagar Todos
-    </button>
+
     <div class="painel-busca">
       <input type="text" id="busca-id" placeholder="Buscar por ID do poste" />
       <input type="text" id="busca-coord" placeholder="Latitude,Longitude" />
@@ -175,81 +152,46 @@
       const todosPostes = [];
       const empresasContagem = {};
 
-      // 🌐 Variáveis para múltiplos traçados
-      let traçados = [];
-      let traçadoAtual = [];
+      fetch("/api/postes")
+        .then((res) => res.json())
+        .then((data) => {
+          data.forEach((poste) => {
+            if (!poste.coordenadas) return;
+            const [lat, lon] = poste.coordenadas.split(",").map(Number);
+            if (isNaN(lat) || isNaN(lon)) return;
 
-      // ➕ Começar um novo traçado
-      function novoTraçado() {
-        traçadoAtual = [];
-      }
-
-      // 📏 Desenhar linha conectando os pontos do traçado atual
-      function desenharTraçado(coordenadas) {
-        if (coordenadas.length < 2) return;
-        const linha = L.polyline(coordenadas, {
-          color: "yellow",
-          weight: 2,
-          opacity: 0.8,
-          smoothFactor: 1,
-        }).addTo(map);
-        traçados.push({ linha, coordenadas });
-      }
-
-      // 🗑 Apagar todos os traçados do mapa
-      function apagarTodosTraçados() {
-        traçados.forEach(({ linha }) => map.removeLayer(linha));
-        traçados = [];
-        traçadoAtual = [];
-      }
-
-      // 🔄 Função para carregar apenas os postes visíveis no mapa
-      function carregarPostesVisiveis() {
-        const bounds = map.getBounds();
-        const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
-
-        fetch(`/api/postes_bbox?bbox=${bbox}`)
-          .then((res) => res.json())
-          .then((data) => {
-            markers.clearLayers();
-            todosPostes.length = 0;
-
-            data.forEach((poste) => {
-              if (!poste.coordenadas) return;
-              const [lat, lon] = poste.coordenadas.split(",").map(Number);
-              if (isNaN(lat) || isNaN(lon)) return;
-
-              const empresas = poste.empresas.split(",").map((e) => e.trim());
-              const qtdEmpresas = empresas.length;
-              const cor = qtdEmpresas >= 5 ? "red" : "green";
-
-              const icone = L.divIcon({
-                className: "",
-                html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
-                iconSize: [16, 16],
-                iconAnchor: [8, 8],
-              });
-
-              const marker = L.marker([lat, lon], { icon: icone });
-              marker.bindPopup(
-                `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b> ${poste.empresas}`
-              );
-              marker.bindTooltip(
-                `ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`,
-                { direction: "top" }
-              );
-
-              // ✅ Clique para traçado
-              marker.on("click", () => {
-                traçadoAtual.push([lat, lon]);
-                desenharTraçado([...traçadoAtual]);
-              });
-
-              markers.addLayer(marker);
-              todosPostes.push({ ...poste, lat, lon });
+            const empresas = poste.empresas.split(",").map((e) => e.trim());
+            empresas.forEach((empresa) => {
+              if (!empresasContagem[empresa]) empresasContagem[empresa] = 0;
+              empresasContagem[empresa]++;
             });
+
+            const qtdEmpresas = empresas.length;
+            const cor = qtdEmpresas >= 5 ? "red" : "green";
+
+            const icone = L.divIcon({
+              className: "",
+              html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
+              iconSize: [16, 16],
+              iconAnchor: [8, 8],
+            });
+
+            const marker = L.marker([lat, lon], { icon: icone });
+            marker.bindPopup(
+              `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b> ${poste.empresas}`
+            );
+            marker.bindTooltip(
+              `ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`,
+              { direction: "top" }
+            );
+            markers.addLayer(marker);
+
+            todosPostes.push({ ...poste, lat, lon });
           });
-      }
+
+          map.addLayer(markers);
+          preencherAutocomplete();
+        });
 
       function preencherAutocomplete() {
         const lista = document.getElementById("lista-empresas");
@@ -321,12 +263,6 @@
             `ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`,
             { direction: "top" }
           );
-
-          marker.on("click", () => {
-            traçadoAtual.push([poste.lat, poste.lon]);
-            desenharTraçado([...traçadoAtual]);
-          });
-
           markers.addLayer(marker);
         });
       }
@@ -350,12 +286,6 @@
             `ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`,
             { direction: "top" }
           );
-
-          marker.on("click", () => {
-            traçadoAtual.push([poste.lat, poste.lon]);
-            desenharTraçado([...traçadoAtual]);
-          });
-
           markers.addLayer(marker);
         });
       }
@@ -367,6 +297,49 @@
         document.getElementById("busca-rua").value = "";
         document.getElementById("resumo-rua").innerHTML = "";
         resetarMapa();
+      }
+
+      async function buscarPorRua() {
+        const rua = document.getElementById("busca-rua").value.trim();
+        const resumoDiv = document.getElementById("resumo-rua");
+        resumoDiv.innerHTML = "";
+
+        if (!rua) {
+          resumoDiv.innerHTML =
+            "<span style='color:red;'>Digite o nome da rua.</span>";
+          return;
+        }
+
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+              rua
+            )}, São José dos Campos, Brasil&limit=1`,
+            {
+              headers: { "User-Agent": "poste-mapa-app" },
+            }
+          );
+
+          const resultados = await response.json();
+
+          if (!resultados.length) {
+            resumoDiv.innerHTML = `<span style='color:red;'>Rua não encontrada: <b>${rua}</b></span>`;
+            return;
+          }
+
+          const { lat, lon, display_name } = resultados[0];
+          map.setView([parseFloat(lat), parseFloat(lon)], 17);
+
+          resumoDiv.innerHTML = `
+            <b>Centralizado na rua:</b> ${display_name}<br>
+            Coordenadas aproximadas: ${lat}, ${lon}<br>
+            <i>Verifique visualmente os postes no mapa.</i>
+          `;
+        } catch (error) {
+          console.error("Erro ao buscar rua:", error);
+          resumoDiv.innerHTML =
+            "<span style='color:red;'>Erro ao buscar rua. Tente novamente.</span>";
+        }
       }
 
       function togglePainel() {
@@ -399,7 +372,47 @@
           alert("Geolocalização não suportada pelo navegador.");
         }
       }
+      // 🔄 Função para carregar apenas os postes visíveis no mapa
+      function carregarPostesVisiveis() {
+        const bounds = map.getBounds();
+        const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
 
+        fetch(`/api/postes_bbox?bbox=${bbox}`)
+          .then((res) => res.json())
+          .then((data) => {
+            markers.clearLayers();
+            todosPostes.length = 0;
+
+            data.forEach((poste) => {
+              if (!poste.coordenadas) return;
+              const [lat, lon] = poste.coordenadas.split(",").map(Number);
+              if (isNaN(lat) || isNaN(lon)) return;
+
+              const empresas = poste.empresas.split(",").map((e) => e.trim());
+              const qtdEmpresas = empresas.length;
+              const cor = qtdEmpresas >= 5 ? "red" : "green";
+
+              const icone = L.divIcon({
+                className: "",
+                html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
+                iconSize: [16, 16],
+                iconAnchor: [8, 8],
+              });
+
+              const marker = L.marker([lat, lon], { icon: icone });
+              marker.bindPopup(
+                `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b> ${poste.empresas}`
+              );
+              marker.bindTooltip(
+                `ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`,
+                { direction: "top" }
+              );
+              markers.addLayer(marker);
+
+              todosPostes.push({ ...poste, lat, lon });
+            });
+          });
+      }
       // 🚀 Carrega os postes visíveis após cada movimentação do mapa
       map.on("moveend", carregarPostesVisiveis);
       // ✅ Carrega a primeira vez ao abrir o mapa
