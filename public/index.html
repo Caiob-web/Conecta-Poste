@@ -94,7 +94,30 @@
     >
       📍 Meu Local
     </button>
-
+    <button
+      onclick="novoTraçado()"
+      style="
+        position: absolute;
+        top: 90px;
+        right: 300px;
+        z-index: 1001;
+        padding: 6px 10px;
+      "
+    >
+      ➕ Novo Traçado
+    </button>
+    <button
+      onclick="apagarTodosTraçados()"
+      style="
+        position: absolute;
+        top: 130px;
+        right: 300px;
+        z-index: 1001;
+        padding: 6px 10px;
+      "
+    >
+      🗑 Apagar Todos
+    </button>
     <div class="painel-busca">
       <input type="text" id="busca-id" placeholder="Buscar por ID do poste" />
       <input type="text" id="busca-coord" placeholder="Latitude,Longitude" />
