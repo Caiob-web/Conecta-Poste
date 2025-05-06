@@ -27,14 +27,24 @@ app.get("/api/postes", async (req, res) => {
       WHERE coordenadas IS NOT NULL AND TRIM(coordenadas) <> ''
       GROUP BY id_poste, coordenadas
     `);
+try {
+  const { rows } = await pool.query(`
+    SELECT 
+      id_poste,
+      STRING_AGG(DISTINCT UPPER(TRIM(empresa)), ', ') AS empresas,
+      coordenadas
+    FROM dados_poste
+    WHERE coordenadas IS NOT NULL AND TRIM(coordenadas) <> ''
+    GROUP BY id_poste, coordenadas
+  `);
 
-    console.log(`🔍 ${rows.length} postes consultados do banco`);
-    res.json(rows);
-  } catch (err) {
-    console.error("Erro ao buscar dados:", err);
-    res.status(500).json({ error: "Erro no servidor" });
-  }
-});
+  console.log(`🔍 ${rows.length} postes consultados do banco`);
+  res.json(rows);
+
+} catch (err) {
+  console.error("Erro ao buscar dados:", err);
+  res.status(500).json({ error: "Erro no servidor" });
+}
 
 // 🧭 Rota fallback
 app.use((req, res) => {
@@ -43,7 +53,22 @@ app.use((req, res) => {
 
 // 🚀 Inicializa servidor
 app.listen(port, () => {
-  console.log(`🚀 Servidor rodando na porta ${port}`);
+  console.log(🚀 Servidor rodando na porta ${port});
+});
+
+// 🛠️ Função para alternar o painel (não deveria estar aqui, mas mantive conforme seu pedido)
+function alternarPainel() {
+  const painel = document.querySelector(".painel-busca");
+  painel.classList.toggle("hidden");
+}
+// 🧭 Rota fallback
+app.use((req, res) => {
+  res.status(404).send("Rota não encontrada");
+});
+
+// 🚀 Inicializa servidor
+app.listen(port, () => {
+  console.log(🚀 Servidor rodando na porta ${port});
 });
 
 // 🛠️ Função para alternar o painel (não deveria estar aqui, mas mantive conforme seu pedido)
@@ -64,7 +89,7 @@ app.get("/api/postes_bbox", async (req, res) => {
 
   try {
     const { rows } = await pool.query(
-      `
+      
       SELECT 
         id_poste,
         STRING_AGG(DISTINCT UPPER(TRIM(empresa)), ', ') AS empresas,
@@ -75,7 +100,7 @@ app.get("/api/postes_bbox", async (req, res) => {
         AND split_part(coordenadas, ',', 1)::float BETWEEN $1 AND $3
         AND split_part(coordenadas, ',', 2)::float BETWEEN $2 AND $4
       GROUP BY id_poste, coordenadas
-    `,
+    ,
       [south, west, north, east]
     );
 
