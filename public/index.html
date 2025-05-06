@@ -5,10 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mapa de Postes</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"
-    />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
     <style>
       html,
       body {
@@ -26,15 +23,14 @@
         background: white;
         padding: 10px;
         border-radius: 8px;
-        top: 30px;
-        right: 20px;
-        width: 260px;
+        top: 10px;
+        left: 10px;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
         font-family: sans-serif;
       }
       .painel-busca input {
         margin-bottom: 5px;
-        width: 100%;
+        width: 200px;
         padding: 5px;
         display: block;
       }
@@ -69,41 +65,10 @@
     </style>
   </head>
   <body>
-    <!-- Botões fixos -->
-    <button
-      onclick="togglePainel()"
-      style="
-        position: absolute;
-        top: 10px;
-        right: 300px;
-        z-index: 1001;
-        padding: 6px 10px;
-      "
-    >
-      ☰ Painel
-    </button>
-    <button
-      onclick="centralizarNoLocal()"
-      style="
-        position: absolute;
-        top: 50px;
-        right: 300px;
-        z-index: 1001;
-        padding: 6px 10px;
-      "
-    >
-      📍 Meu Local
-    </button>
-
     <div class="painel-busca">
       <input type="text" id="busca-id" placeholder="Buscar por ID do poste" />
       <input type="text" id="busca-coord" placeholder="Latitude,Longitude" />
-      <input
-        type="text"
-        id="filtro-empresa"
-        list="lista-empresas"
-        placeholder="Filtrar por empresa"
-      />
+      <input type="text" id="filtro-empresa" list="lista-empresas" placeholder="Filtrar por empresa" />
       <datalist id="lista-empresas"></datalist>
       <input type="text" id="busca-rua" placeholder="Buscar por rua" />
       <button onclick="buscarID()">🔍 ID</button>
@@ -111,8 +76,6 @@
       <button onclick="filtrarEmpresa()">🏢 Filtrar</button>
       <button onclick="resetarMapa()">🔄 Mostrar tudo</button>
       <button onclick="buscarPorRua()">🛣 Rua</button>
-      <button onclick="limparBusca()">🧹 Limpar</button>
-      <div id="resumo-rua" style="margin-top: 10px; font-size: 14px"></div>
     </div>
 
     <div class="legenda">
@@ -132,9 +95,7 @@
     <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
     <script>
       const map = L.map("map").setView([-23.2, -45.9], 12);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(
-        map
-      );
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
       const markers = L.markerClusterGroup({
         spiderfyOnMaxZoom: true,
@@ -144,7 +105,9 @@
         disableClusteringAtZoom: 17,
       });
 
-      markers.on("clusterclick", (a) => a.layer.spiderfy());
+      markers.on("clusterclick", function (a) {
+        a.layer.spiderfy();
+      });
 
       const todosPostes = [];
       const empresasContagem = {};
@@ -182,10 +145,8 @@
               { direction: "top" }
             );
             markers.addLayer(marker);
-
             todosPostes.push({ ...poste, lat, lon });
           });
-
           map.addLayer(markers);
           preencherAutocomplete();
         });
@@ -235,140 +196,74 @@
       }
 
       function filtrarEmpresa() {
-        const termo = document
-          .getElementById("filtro-empresa")
-          .value.trim()
-          .toLowerCase();
+        const termo = document.getElementById("filtro-empresa").value.trim().toLowerCase();
         if (!termo) return;
         markers.clearLayers();
 
         todosPostes.forEach((poste) => {
           if (!poste.empresas.toLowerCase().includes(termo)) return;
-          const qtdEmpresas = poste.empresas.split(",").length;
-          const cor = qtdEmpresas >= 5 ? "red" : "green";
-
-          const icone = L.divIcon({
-            className: "",
-            html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
-          });
-
-          const marker = L.marker([poste.lat, poste.lon], { icon: icone });
-          marker.bindPopup(
-            `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b> ${poste.empresas}`
-          );
-          marker.bindTooltip(
-            `ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`,
-            { direction: "top" }
-          );
-          markers.addLayer(marker);
+          adicionarPosteNoMapa(poste);
         });
       }
 
       function resetarMapa() {
         markers.clearLayers();
-        todosPostes.forEach((poste) => {
-          const qtdEmpresas = poste.empresas.split(",").length;
-          const cor = qtdEmpresas >= 5 ? "red" : "green";
-
-          const icone = L.divIcon({
-            className: "",
-            html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
-          });
-
-          const marker = L.marker([poste.lat, poste.lon], { icon: icone });
-          marker.bindPopup(
-            `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b> ${poste.empresas}`
-          );
-          marker.bindTooltip(
-            `ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`,
-            { direction: "top" }
-          );
-          markers.addLayer(marker);
-        });
+        todosPostes.forEach(adicionarPosteNoMapa);
       }
 
-      function limparBusca() {
-        document.getElementById("busca-id").value = "";
-        document.getElementById("busca-coord").value = "";
-        document.getElementById("filtro-empresa").value = "";
-        document.getElementById("busca-rua").value = "";
-        document.getElementById("resumo-rua").innerHTML = "";
-        resetarMapa();
+      function adicionarPosteNoMapa(poste) {
+        const qtdEmpresas = poste.empresas.split(",").length;
+        const cor = qtdEmpresas >= 5 ? "red" : "green";
+
+        const icone = L.divIcon({
+          className: "",
+          html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
+        });
+
+        const marker = L.marker([poste.lat, poste.lon], { icon: icone });
+        marker.bindPopup(`<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b> ${poste.empresas}`);
+        marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
+          direction: "top",
+        });
+        markers.addLayer(marker);
       }
 
       async function buscarPorRua() {
-        const rua = document.getElementById("busca-rua").value.trim();
-        const resumoDiv = document.getElementById("resumo-rua");
-        resumoDiv.innerHTML = "";
+  const rua = document.getElementById("busca-rua").value.trim();
+  if (!rua) return alert("Digite o nome da rua.");
 
-        if (!rua) {
-          resumoDiv.innerHTML =
-            "<span style='color:red;'>Digite o nome da rua.</span>";
-          return;
-        }
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1&q=${encodeURIComponent(rua + ", São José dos Campos, Brasil")}`;
 
-        try {
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-              rua
-            )}, São José dos Campos, Brasil&limit=1`,
-            {
-              headers: { "User-Agent": "poste-mapa-app" },
-            }
-          );
-
-          const resultados = await response.json();
-
-          if (!resultados.length) {
-            resumoDiv.innerHTML = `<span style='color:red;'>Rua não encontrada: <b>${rua}</b></span>`;
-            return;
-          }
-
-          const { lat, lon, display_name } = resultados[0];
-          map.setView([parseFloat(lat), parseFloat(lon)], 17);
-
-          resumoDiv.innerHTML = `
-            <b>Centralizado na rua:</b> ${display_name}<br>
-            Coordenadas aproximadas: ${lat}, ${lon}<br>
-            <i>Verifique visualmente os postes no mapa.</i>
-          `;
-        } catch (error) {
-          console.error("Erro ao buscar rua:", error);
-          resumoDiv.innerHTML =
-            "<span style='color:red;'>Erro ao buscar rua. Tente novamente.</span>";
-        }
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'Accept-Language': 'pt-BR'
       }
+    });
+    const resultados = await response.json();
 
-      function togglePainel() {
-        const painel = document.querySelector(".painel-busca");
-        painel.style.display =
-          painel.style.display === "none" ? "block" : "none";
-      }
+    if (!resultados.length) {
+      alert("Rua não encontrada.");
+      return;
+    }
 
-      function centralizarNoLocal() {
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            (position) => {
-              const lat = position.coords.latitude;
-              const lon = position.coords.longitude;
-              map.flyTo([lat, lon], 17, { duration: 1.2 });
-              L.popup()
-                .setLatLng([lat, lon])
-                .setContent(
-                  `<b>Você está aqui:</b><br>${lat.toFixed(6)}, ${lon.toFixed(
-                    6
-                  )}`
-                )
-                .openOn(map);
-            },
-            () => {
-              alert("Não foi possível acessar sua localização.");
-            }
-          );
-        } else {
-          alert("Geolocalização não suportada pelo navegador.");
-        }
-      }
+    const resultado = resultados[0];
+    const lat = parseFloat(resultado.lat);
+    const lon = parseFloat(resultado.lon);
+
+    if (isNaN(lat) || isNaN(lon)) {
+      alert("Coordenadas inválidas retornadas.");
+      return;
+    }
+
+    map.setView([lat, lon], 17);
+  } catch (err) {
+    console.error("Erro ao buscar rua:", err);
+    alert("Erro ao buscar rua. Verifique sua conexão ou tente outro nome.");
+  }
+}
     </script>
   </body>
 </html>
