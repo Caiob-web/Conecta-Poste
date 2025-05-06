@@ -1,3 +1,5 @@
+// 🗺️ MAPA DE POSTES COM FILTRO POR CIDADE (Leaflet + MarkerCluster)
+
 window.addEventListener("DOMContentLoaded", () => {
   const map = L.map("map", { preferCanvas: true }).setView([-23.2, -45.9], 12);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
@@ -96,7 +98,7 @@ window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("nome_municipio").addEventListener("change", carregarPostesVisiveis);
   carregarPostesVisiveis();
 
-  function buscarID() {
+  window.buscarID = function () {
     const id = document.getElementById("busca-id").value.trim();
     const resultado = todosPostes.find((p) => p.id_poste.toString() === id);
     if (resultado) {
@@ -110,7 +112,22 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function filtrarEmpresa() {
+  window.buscarCoordenada = function () {
+    const coordInput = document.getElementById("busca-coord").value.trim();
+    const partes = coordInput.split(",");
+    if (partes.length !== 2) return alert("Use o formato: lat,lon");
+    const lat = parseFloat(partes[0]);
+    const lon = parseFloat(partes[1]);
+    if (isNaN(lat) || isNaN(lon)) return alert("Coordenadas inválidas.");
+
+    map.setView([lat, lon], 18);
+    L.popup()
+      .setLatLng([lat, lon])
+      .setContent(`<b>Coordenada:</b><br>${lat}, ${lon}`)
+      .openOn(map);
+  }
+
+  window.filtrarEmpresa = function () {
     const termo = document.getElementById("filtro-empresa").value.trim().toLowerCase();
     if (!termo) return;
     markers.clearLayers();
@@ -134,7 +151,7 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  async function buscarPorRua() {
+  window.buscarPorRua = async function () {
     const rua = document.getElementById("busca-rua").value.trim();
     const resumoDiv = document.getElementById("resumo-rua");
     resumoDiv.innerHTML = "";
@@ -170,11 +187,11 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function resetarMapa() {
+  window.resetarMapa = function () {
     carregarPostesVisiveis();
   }
 
-  function limparBusca() {
+  window.limparBusca = function () {
     document.getElementById("busca-id").value = "";
     document.getElementById("busca-coord").value = "";
     document.getElementById("filtro-empresa").value = "";
