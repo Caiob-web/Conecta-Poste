@@ -4,23 +4,23 @@ window.addEventListener("DOMContentLoaded", () => {
   const map = L.map("map", { preferCanvas: true }).setView([-23.2, -45.9], 12);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
   document.getElementById("localizacao-btn").addEventListener("click", () => {
-  map.locate({ setView: true });
+    map.locate({ setView: true });
 
-map.once("locationfound", (e) => {
-  map.setView(e.latlng, 20); // 👈 força o zoom máximo
-  const marker = L.marker(e.latlng).addTo(map);
-  marker.bindPopup("📍 Sua localização atual").openPopup();
-});
+    map.once("locationfound", (e) => {
+      map.setView(e.latlng, 20); // 👈 força o zoom máximo
+      const marker = L.marker(e.latlng).addTo(map);
+      marker.bindPopup("📍 Sua localização atual").openPopup();
+    });
 
-  map.once("locationfound", (e) => {
-    const marker = L.marker(e.latlng).addTo(map);
-    marker.bindPopup("📍 Sua localização atual").openPopup();
+    map.once("locationfound", (e) => {
+      const marker = L.marker(e.latlng).addTo(map);
+      marker.bindPopup("📍 Sua localização atual").openPopup();
+    });
+
+    map.once("locationerror", () => {
+      alert("Não foi possível obter sua localização.");
+    });
   });
-
-  map.once("locationerror", () => {
-    alert("Não foi possível obter sua localização.");
-  });
-});
 
   const markers = L.markerClusterGroup({
     spiderfyOnMaxZoom: true,
