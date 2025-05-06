@@ -68,9 +68,8 @@
     <div class="painel-cidade">
       <label for="nome_municipio"><b>Cidade:</b></label>
       <select id="nome_municipio">
-        <option value="">Todas as cidades</option>
-        <option value="MOGI DAS CRUZES">MOGI DAS CRUZES</option>
         <option value="SÃO JOSÉ DOS CAMPOS">SÃO JOSÉ DOS CAMPOS</option>
+        <option value="MOGI DAS CRUZES">MOGI DAS CRUZES</option>
         <option value="BIRITIBA MIRIM">BIRITIBA MIRIM</option>
         <option value="SUZANO">SUZANO</option>
         <option value="POÁ">POÁ</option>
@@ -98,9 +97,40 @@
       <button onclick="resetarMapa()">🔄 Mostrar tudo</button>
       <button onclick="buscarPorRua()">🛣 Rua</button>
       <button onclick="limparBusca()">🧹 Limpar</button>
+      <button id="toggle-painel" style="
+      position: absolute;
+      top: 20px;
+      right: 290px;
+      z-index: 1001;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      padding: 5px 10px;
+      font-family: sans-serif;
+      cursor: pointer;
+      box-shadow: 0 0 5px rgba(0,0,0,0.2);
+    ">
+  ➡️
+</button>
+
 
       <div id="resumo-rua" style="margin-top: 10px; font-size: 14px"></div>
     </div>
+  <div id="loading-indicador" style="
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 10px 20px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+  font-family: sans-serif;
+  display: none;
+  z-index: 1500;
+">
+  ⏳ Carregando postes...
+</div>
 
     <!-- Mapa -->
     <div id="map"></div>
