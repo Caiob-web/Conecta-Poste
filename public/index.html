@@ -10,13 +10,24 @@
       href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"
     />
     <!-- Adiciona no topo da página -->
-<div style="position: absolute; z-index: 1000; background: white; padding: 10px; border-radius: 8px; top: 20px; left: 20px;">
-  <label for="nome_municipio">Cidade:</label>
-  <select id="nome_municipio">
-    <option value="SÃO JOSÉ DOS CAMPOS">SÃO JOSÉ DOS CAMPOS</option>
-      <option value="BIRITIBA MIRIM">BIRITIBA MIRIM</option>
-  </select>
-</div>
+    <div
+      style="
+        position: absolute;
+        z-index: 1000;
+        background: white;
+        padding: 10px;
+        border-radius: 8px;
+        top: 20px;
+        left: 20px;
+      "
+    >
+      <label for="nome_municipio">Cidade:</label>
+      <select id="nome_municipio">
+        <option value="SÃO JOSÉ DOS CAMPOS">SÃO JOSÉ DOS CAMPOS</option>
+        <option value="BIRITIBA MIRIM">BIRITIBA MIRIM</option>
+         <option value="MOGI DAS CRUZES">MOGI DAS CRUZES</option>
+      </select>
+    </div>
     <style>
       html,
       body {
@@ -380,23 +391,16 @@
           alert("Geolocalização não suportada pelo navegador.");
         }
       }
-      // 🔄 Função para carregar apenas os postes visíveis no mapa
-      function carregarPostesVisiveis() {
-        const bounds = map.getBounds();
-
-        const south = bounds.getSouth().toFixed(8);
-        const west = bounds.getWest().toFixed(8);
-        const north = bounds.getNorth().toFixed(8);
-        const east = bounds.getEast().toFixed(8);
-
-        const bbox = `${south},${west},${north},${east}`;
-        console.log("📦 BBOX gerado:", bbox);
-
-        fetch(`/api/postes_bbox?bbox=${bbox}`)
+      // 🔄 Função para carregar os postes com base na cidade selecionada
+      function carregarPostesPorCidade(cidade) {
+        fetch(`/api/postes?nome_municipio=${encodeURIComponent(cidade)}`)
           .then((res) => res.json())
           .then((data) => {
             markers.clearLayers();
             todosPostes.length = 0;
+            Object.keys(empresasContagem).forEach(
+              (k) => delete empresasContagem[k]
+            );
 
             data.forEach((poste) => {
               if (!poste.coordenadas) return;
@@ -404,6 +408,11 @@
               if (isNaN(lat) || isNaN(lon)) return;
 
               const empresas = poste.empresas.split(",").map((e) => e.trim());
+              empresas.forEach((empresa) => {
+                if (!empresasContagem[empresa]) empresasContagem[empresa] = 0;
+                empresasContagem[empresa]++;
+              });
+
               const qtdEmpresas = empresas.length;
               const cor = qtdEmpresas >= 5 ? "red" : "green";
 
@@ -423,14 +432,23 @@
                 { direction: "top" }
               );
               markers.addLayer(marker);
-
               todosPostes.push({ ...poste, lat, lon });
             });
-          })
-          .catch((err) => {
-            console.error("Erro ao carregar postes visíveis:", err);
+
+            map.addLayer(markers);
+            preencherAutocomplete();
           });
       }
+
+      // ▶️ Carrega a cidade padrão ao abrir
+      carregarPostesPorCidade(document.getElementById("nome_municipio").value);
+
+      // 🔁 Muda os dados do mapa quando a cidade muda
+      document
+        .getElementById("nome_municipio")
+        .addEventListener("change", function () {
+          carregarPostesPorCidade(this.value);
+        });
     </script>
   </body>
 </html>
