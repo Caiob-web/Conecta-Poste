@@ -77,7 +77,7 @@ window.addEventListener("DOMContentLoaded", () => {
           );
 
           markers.addLayer(marker);
-          todosPostes.push({ ...poste, lat, lon });
+          todosPostes.push({ ...poste, lat, lon, empresas: new Set(empresas) });
         });
 
         map.eachLayer((layer) => {
@@ -85,17 +85,112 @@ window.addEventListener("DOMContentLoaded", () => {
         });
 
         map.addLayer(markers);
+        preencherAutocomplete();
       })
       .catch((err) => {
         console.error("Erro ao carregar postes:", err);
       });
   }
 
-  // Eventos
   map.on("moveend", carregarPostesVisiveis);
-
   document.getElementById("nome_municipio").addEventListener("change", carregarPostesVisiveis);
-
-  // Inicializa
   carregarPostesVisiveis();
+
+  function buscarID() {
+    const id = document.getElementById("busca-id").value.trim();
+    const resultado = todosPostes.find((p) => p.id_poste.toString() === id);
+    if (resultado) {
+      map.setView([resultado.lat, resultado.lon], 18);
+      L.popup()
+        .setLatLng([resultado.lat, resultado.lon])
+        .setContent(`<b>ID:</b> ${resultado.id_poste}<br><b>Empresas:</b> ${[...resultado.empresas].join(", ")}`)
+        .openOn(map);
+    } else {
+      alert("Poste não encontrado.");
+    }
+  }
+
+  function filtrarEmpresa() {
+    const termo = document.getElementById("filtro-empresa").value.trim().toLowerCase();
+    if (!termo) return;
+    markers.clearLayers();
+
+    todosPostes.forEach((poste) => {
+      const empresas = Array.from(poste.empresas).map((e) => e.toLowerCase());
+      if (!empresas.some((e) => e.includes(termo))) return;
+
+      const qtdEmpresas = empresas.length;
+      const cor = qtdEmpresas >= 5 ? "red" : "green";
+
+      const icone = L.divIcon({
+        className: "",
+        html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`
+      });
+
+      const marker = L.marker([poste.lat, poste.lon], { icon: icone });
+      marker.bindPopup(`<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b> ${Array.from(poste.empresas).join(", ")}`);
+      marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, { direction: "top" });
+      markers.addLayer(marker);
+    });
+  }
+
+  async function buscarPorRua() {
+    const rua = document.getElementById("busca-rua").value.trim();
+    const resumoDiv = document.getElementById("resumo-rua");
+    resumoDiv.innerHTML = "";
+
+    if (!rua) {
+      resumoDiv.innerHTML = "<span style='color:red;'>Digite o nome da rua.</span>";
+      return;
+    }
+
+    try {
+      const cidade = document.getElementById("nome_municipio").value;
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(rua)}, ${cidade}, Brasil&limit=1`,
+        { headers: { "User-Agent": "poste-mapa-app" } }
+      );
+      const resultados = await response.json();
+
+      if (!resultados.length) {
+        resumoDiv.innerHTML = `<span style='color:red;'>Rua não encontrada: <b>${rua}</b></span>`;
+        return;
+      }
+
+      const { lat, lon, display_name } = resultados[0];
+      map.setView([parseFloat(lat), parseFloat(lon)], 17);
+
+      resumoDiv.innerHTML = `
+        <b>Centralizado na rua:</b> ${display_name}<br>
+        Coordenadas: ${lat}, ${lon}
+      `;
+    } catch (error) {
+      console.error("Erro ao buscar rua:", error);
+      resumoDiv.innerHTML = "<span style='color:red;'>Erro ao buscar rua.</span>";
+    }
+  }
+
+  function resetarMapa() {
+    carregarPostesVisiveis();
+  }
+
+  function limparBusca() {
+    document.getElementById("busca-id").value = "";
+    document.getElementById("busca-coord").value = "";
+    document.getElementById("filtro-empresa").value = "";
+    document.getElementById("busca-rua").value = "";
+    document.getElementById("resumo-rua").innerHTML = "";
+    resetarMapa();
+  }
+
+  function preencherAutocomplete() {
+    const lista = document.getElementById("lista-empresas");
+    lista.innerHTML = "";
+    Object.entries(empresasContagem).sort().forEach(([empresa, count]) => {
+      const option = document.createElement("option");
+      option.value = empresa;
+      option.label = `${empresa} (${count} postes)`;
+      lista.appendChild(option);
+    });
+  }
 });

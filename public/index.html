@@ -6,11 +6,7 @@
     <title>Mapa de Postes</title>
 
     <!-- Leaflet CSS -->
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet/dist/leaflet.css"
-    />
-    <!-- MarkerCluster CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"
@@ -21,7 +17,8 @@
     />
 
     <style>
-      html, body {
+      html,
+      body {
         margin: 0;
         padding: 0;
         height: 100%;
@@ -39,30 +36,75 @@
         top: 20px;
         left: 20px;
         font-family: sans-serif;
-        box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+      }
+      .painel-busca {
+        position: absolute;
+        z-index: 1000;
+        background: white;
+        padding: 10px;
+        border-radius: 8px;
+        top: 20px;
+        right: 20px;
+        width: 250px;
+        font-family: sans-serif;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+      }
+      .painel-busca input {
+        margin-bottom: 5px;
+        width: 100%;
+        padding: 5px;
+        display: block;
+      }
+      .painel-busca button {
+        margin: 2px 2px 5px 0;
+        padding: 5px 10px;
       }
     </style>
   </head>
 
   <body>
-    <!-- Painel de filtro -->
+    <!-- Painel de filtro por cidade -->
     <div class="painel-cidade">
       <label for="nome_municipio"><b>Cidade:</b></label>
       <select id="nome_municipio">
         <option value="">Todas as cidades</option>
+        <option value="MOGI DAS CRUZES">MOGI DAS CRUZES</option>
         <option value="SÃO JOSÉ DOS CAMPOS">SÃO JOSÉ DOS CAMPOS</option>
         <option value="BIRITIBA MIRIM">BIRITIBA MIRIM</option>
+        <option value="CARAGUATATUBA">CARAGUATATUBA</option>
       </select>
+    </div>
+
+    <!-- Painel lateral de busca -->
+    <div class="painel-busca">
+      <input type="text" id="busca-id" placeholder="Buscar por ID do poste" />
+      <input type="text" id="busca-coord" placeholder="Latitude,Longitude" />
+      <input
+        type="text"
+        id="filtro-empresa"
+        list="lista-empresas"
+        placeholder="Filtrar por empresa"
+      />
+      <datalist id="lista-empresas"></datalist>
+      <input type="text" id="busca-rua" placeholder="Buscar por rua" />
+
+      <button onclick="buscarID()">🔍 ID</button>
+      <button onclick="buscarCoordenada()">📍 Coordenada</button>
+      <button onclick="filtrarEmpresa()">🏢 Filtrar</button>
+      <button onclick="resetarMapa()">🔄 Mostrar tudo</button>
+      <button onclick="buscarPorRua()">🛣 Rua</button>
+      <button onclick="limparBusca()">🧹 Limpar</button>
+
+      <div id="resumo-rua" style="margin-top: 10px; font-size: 14px"></div>
     </div>
 
     <!-- Mapa -->
     <div id="map"></div>
 
-    <!-- Leaflet JS -->
+    <!-- Scripts -->
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <!-- MarkerCluster JS -->
     <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
-    <!-- Seu script -->
     <script src="script.js" defer></script>
   </body>
 </html>
