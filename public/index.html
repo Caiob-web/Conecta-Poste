@@ -7,18 +7,11 @@
 
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"
-    />
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css"
-    />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
 
     <style>
-      html,
-      body {
+      html, body {
         margin: 0;
         padding: 0;
         height: 100%;
@@ -27,6 +20,7 @@
         height: 100vh;
         width: 100vw;
       }
+
       .painel-cidade {
         position: absolute;
         z-index: 1000;
@@ -34,10 +28,12 @@
         padding: 10px;
         border-radius: 8px;
         top: 20px;
-        left: 20px;
+        left: 50%;
+        transform: translateX(-50%);
         font-family: sans-serif;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
       }
+
       .painel-busca {
         position: absolute;
         z-index: 1000;
@@ -50,15 +46,45 @@
         font-family: sans-serif;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
       }
+
       .painel-busca input {
         margin-bottom: 5px;
         width: 100%;
         padding: 5px;
         display: block;
       }
+
       .painel-busca button {
         margin: 2px 2px 5px 0;
         padding: 5px 10px;
+      }
+
+      #toggle-painel {
+        position: absolute;
+        top: 20px;
+        right: 290px;
+        z-index: 1100;
+        background: #fff;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        padding: 5px 10px;
+        font-family: sans-serif;
+        cursor: pointer;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+      }
+
+      #loading-indicador {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(255, 255, 255, 0.9);
+        padding: 10px 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        font-family: sans-serif;
+        display: none;
+        z-index: 1500;
       }
     </style>
   </head>
@@ -74,20 +100,17 @@
         <option value="SUZANO">SUZANO</option>
         <option value="POÁ">POÁ</option>
         <option value="FERRAZ DE VASCONCELOS">FERRAZ DE VASCONCELOS</option>
-        
       </select>
     </div>
+
+    <!-- Botão para esconder/mostrar o painel -->
+    <button id="toggle-painel">⬅️</button>
 
     <!-- Painel lateral de busca -->
     <div class="painel-busca">
       <input type="text" id="busca-id" placeholder="Buscar por ID do poste" />
       <input type="text" id="busca-coord" placeholder="Latitude,Longitude" />
-      <input
-        type="text"
-        id="filtro-empresa"
-        list="lista-empresas"
-        placeholder="Filtrar por empresa"
-      />
+      <input type="text" id="filtro-empresa" list="lista-empresas" placeholder="Filtrar por empresa" />
       <datalist id="lista-empresas"></datalist>
       <input type="text" id="busca-rua" placeholder="Buscar por rua" />
 
@@ -97,43 +120,36 @@
       <button onclick="resetarMapa()">🔄 Mostrar tudo</button>
       <button onclick="buscarPorRua()">🛣 Rua</button>
       <button onclick="limparBusca()">🧹 Limpar</button>
-      <button id="toggle-painel" style="
-      position: absolute;
-      top: 20px;
-      right: 290px;
-      z-index: 1001;
-      background: #fff;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      padding: 5px 10px;
-      font-family: sans-serif;
-      cursor: pointer;
-      box-shadow: 0 0 5px rgba(0,0,0,0.2);
-    ">
-  ➡️
-</button>
-
 
       <div id="resumo-rua" style="margin-top: 10px; font-size: 14px"></div>
     </div>
-  <div id="loading-indicador" style="
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(255, 255, 255, 0.9);
-  padding: 10px 20px;
-  border-radius: 8px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.3);
-  font-family: sans-serif;
-  display: none;
-  z-index: 1500;
-">
-  ⏳ Carregando postes...
-</div>
+
+    <!-- Indicador de carregamento -->
+    <div id="loading-indicador">⏳ Carregando postes...</div>
 
     <!-- Mapa -->
     <div id="map"></div>
+    <!-- Botão de localização -->
+<button id="localizacao-btn" title="Minha Localização" style="
+  position: absolute;
+  bottom: 70px;
+  right: 10px;
+  z-index: 1001;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  width: 34px;
+  height: 34px;
+  font-size: 18px;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+">
+📍
+</button>
+
 
     <!-- Scripts -->
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>

@@ -48,9 +48,11 @@ app.get("/api/postes_bbox", async (req, res) => {
     res.status(500).json({ error: "Erro no servidor" });
   }
 });
+
 app.get("/api/ping", (req, res) => {
   res.json({ status: "ok", message: "API no ar 🔥" });
 });
+
 // 🧭 Fallback
 app.use((req, res) => {
   res.status(404).send("Rota não encontrada");
