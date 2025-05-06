@@ -375,7 +375,14 @@
       // 🔄 Função para carregar apenas os postes visíveis no mapa
       function carregarPostesVisiveis() {
         const bounds = map.getBounds();
-        const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
+
+        const south = bounds.getSouth().toFixed(8);
+        const west = bounds.getWest().toFixed(8);
+        const north = bounds.getNorth().toFixed(8);
+        const east = bounds.getEast().toFixed(8);
+
+        const bbox = `${south},${west},${north},${east}`;
+        console.log("📦 BBOX gerado:", bbox);
 
         fetch(`/api/postes_bbox?bbox=${bbox}`)
           .then((res) => res.json())
@@ -411,12 +418,11 @@
 
               todosPostes.push({ ...poste, lat, lon });
             });
+          })
+          .catch((err) => {
+            console.error("Erro ao carregar postes visíveis:", err);
           });
       }
-      // 🚀 Carrega os postes visíveis após cada movimentação do mapa
-      map.on("moveend", carregarPostesVisiveis);
-      // ✅ Carrega a primeira vez ao abrir o mapa
-      carregarPostesVisiveis();
     </script>
   </body>
 </html>
