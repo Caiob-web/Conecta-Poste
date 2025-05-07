@@ -10,14 +10,14 @@ app.use(express.static("public")); // frontend estático
 
 // 🔄 Conexão com o Railway
 const pool = new Pool({
-  connectionString: "",
+  connectionString: "postgresql://postgres:quPrARMqWOJYkhbijfypWvulavftgRzQ@hopper.proxy.rlwy.net:22492/railway",
   ssl: { rejectUnauthorized: false },
 });
 
-// ✅ Consulta direta à VIEW
+// ✅ Consulta direta à tabela dados_poste
 app.get("/api/postes", async (req, res) => {
   try {
-    const { rows } = await pool.query("SELECT * FROM vw_postes_empresas");
+    const { rows } = await pool.query("SELECT * FROM dados_poste");
     res.json(rows);
   } catch (err) {
     console.error("Erro ao buscar dados:", err);
