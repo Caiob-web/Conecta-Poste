@@ -8,29 +8,16 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.static("public")); // frontend estático
 
-// 🔄 NOVA CONEXÃO COM O RAILWAY
+// 🔄 Conexão com o Railway
 const pool = new Pool({
-  connectionString: "postgresql://postgres:SFUszjwNHVODKEaFsoShHfHSOmyTmSzm@crossover.proxy.rlwy.net:28652/railway
-
-
-
-
-",
+  connectionString: "postgresql://postgres:SFUszjwNHVODKEaFsoShHfHSOmyTmSzm@crossover.proxy.rlwy.net:28652/railway",
   ssl: { rejectUnauthorized: false },
 });
 
-// 🔍 ENDPOINT PARA BUSCAR OS POSTES
+// ✅ Consulta direta à VIEW
 app.get("/api/postes", async (req, res) => {
   try {
-    const { rows } = await pool.query(`
-      SELECT 
-        id_poste,
-        STRING_AGG(DISTINCT UPPER(TRIM(empresa)), ', ') AS empresas,
-        coordenadas
-      FROM dados_poste
-      WHERE coordenadas IS NOT NULL AND TRIM(coordenadas) <> ''
-      GROUP BY id_poste, coordenadas
-    `);
+    const { rows } = await pool.query("SELECT * FROM vw_postes_empresas");
     res.json(rows);
   } catch (err) {
     console.error("Erro ao buscar dados:", err);
@@ -38,10 +25,12 @@ app.get("/api/postes", async (req, res) => {
   }
 });
 
+// 404 padrão
 app.use((req, res) => {
   res.status(404).send("Rota não encontrada");
 });
 
+// 🚀 Inicia o servidor
 app.listen(port, () => {
   console.log(`🚀 Servidor rodando na porta ${port}`);
 });
