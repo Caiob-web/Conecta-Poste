@@ -78,9 +78,11 @@
         placeholder="Filtrar por empresa"
       />
       <datalist id="lista-empresas"></datalist>
+      <input type="text" id="busca-rua" placeholder="Buscar por rua" />
       <button onclick="buscarID()">🔍 ID</button>
       <button onclick="buscarCoordenada()">📍 Coordenada</button>
       <button onclick="filtrarEmpresa()">🏢 Filtrar</button>
+      <button onclick="buscarPorRua()">🛣 Rua</button>
       <button onclick="resetarMapa()">🔄 Mostrar tudo</button>
     </div>
 
@@ -101,9 +103,7 @@
     <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
     <script>
       const map = L.map("map").setView([-23.2, -45.9], 12);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(
-        map
-      );
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
       const markers = L.markerClusterGroup({
         spiderfyOnMaxZoom: true,
@@ -113,9 +113,7 @@
         disableClusteringAtZoom: 17,
       });
 
-      markers.on("clusterclick", function (a) {
-        a.layer.spiderfy();
-      });
+      markers.on("clusterclick", (a) => a.layer.spiderfy());
 
       const todosPostes = [];
       const empresasContagem = {};
@@ -130,8 +128,7 @@
 
             const empresas = poste.empresas.split(",").map((e) => e.trim());
             empresas.forEach((empresa) => {
-              if (!empresasContagem[empresa]) empresasContagem[empresa] = 0;
-              empresasContagem[empresa]++;
+              empresasContagem[empresa] = (empresasContagem[empresa] || 0) + 1;
             });
 
             const qtdEmpresas = empresas.length;
@@ -144,14 +141,15 @@
               iconAnchor: [8, 8],
             });
 
+            const listaEmpresas = empresas.map((e) => `<li>${e}</li>`).join("");
             const marker = L.marker([lat, lon], { icon: icone });
             marker.bindPopup(
-              `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b> ${poste.empresas}`
+              `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b><ul>${listaEmpresas}</ul>`
             );
-            marker.bindTooltip(
-              `ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`,
-              { direction: "top" }
-            );
+            marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
+              direction: "top",
+            });
+
             markers.addLayer(marker);
             todosPostes.push({ ...poste, lat, lon });
           });
@@ -177,10 +175,14 @@
         const resultado = todosPostes.find((p) => p.id_poste.toString() === id);
         if (resultado) {
           map.setView([resultado.lat, resultado.lon], 18);
+          const listaEmpresas = resultado.empresas
+            .split(",")
+            .map((e) => `<li>${e.trim()}</li>`)
+            .join("");
           L.popup()
             .setLatLng([resultado.lat, resultado.lon])
             .setContent(
-              `<b>ID:</b> ${resultado.id_poste}<br><b>Empresas:</b> ${resultado.empresas}`
+              `<b>ID:</b> ${resultado.id_poste}<br><b>Empresas:</b><ul>${listaEmpresas}</ul>`
             )
             .openOn(map);
         } else {
@@ -204,10 +206,7 @@
       }
 
       function filtrarEmpresa() {
-        const termo = document
-          .getElementById("filtro-empresa")
-          .value.trim()
-          .toLowerCase();
+        const termo = document.getElementById("filtro-empresa").value.trim().toLowerCase();
         if (!termo) return;
         markers.clearLayers();
 
@@ -223,16 +222,74 @@
             iconAnchor: [8, 8],
           });
 
+          const listaEmpresas = poste.empresas
+            .split(",")
+            .map((e) => `<li>${e.trim()}</li>`)
+            .join("");
           const marker = L.marker([poste.lat, poste.lon], { icon: icone });
           marker.bindPopup(
-            `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b> ${poste.empresas}`
+            `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b><ul>${listaEmpresas}</ul>`
           );
-          marker.bindTooltip(
-            `ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`,
-            { direction: "top" }
-          );
+          marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
+            direction: "top",
+          });
           markers.addLayer(marker);
         });
+      }
+
+      function buscarPorRua() {
+        const termoRua = document.getElementById("busca-rua").value.trim().toLowerCase();
+        if (!termoRua) return alert("Digite uma rua válida.");
+        markers.clearLayers();
+
+        const encontrados = todosPostes.filter(
+          (poste) => poste.resumo && poste.resumo.toLowerCase().includes(termoRua)
+        );
+
+        if (encontrados.length === 0) {
+          alert("Nenhum poste encontrado nesta rua.");
+          return;
+        }
+
+        let verdes = 0;
+        let vermelhos = 0;
+
+        encontrados.forEach((poste) => {
+          const qtdEmpresas = poste.empresas.split(",").length;
+          const cor = qtdEmpresas > 4 ? "red" : "green";
+          if (cor === "red") vermelhos++;
+          else verdes++;
+
+          const icone = L.divIcon({
+            className: "",
+            html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
+            iconSize: [16, 16],
+            iconAnchor: [8, 8],
+          });
+
+          const listaEmpresas = poste.empresas
+            .split(",")
+            .map((e) => `<li>${e.trim()}</li>`)
+            .join("");
+          const marker = L.marker([poste.lat, poste.lon], { icon: icone });
+          marker.bindPopup(
+            `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b><ul>${listaEmpresas}</ul>`
+          );
+          marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
+            direction: "top",
+          });
+          markers.addLayer(marker);
+        });
+
+        map.addLayer(markers);
+
+        const mediaLat = encontrados.reduce((acc, p) => acc + p.lat, 0) / encontrados.length;
+        const mediaLon = encontrados.reduce((acc, p) => acc + p.lon, 0) / encontrados.length;
+        map.setView([mediaLat, mediaLon], 15);
+
+        alert(
+          `Rua encontrada com ${encontrados.length} postes.\nVerdes: ${verdes} | Vermelhos: ${vermelhos}`
+        );
       }
 
       function resetarMapa() {
@@ -248,9 +305,17 @@
             iconAnchor: [8, 8],
           });
 
+          const listaEmpresas = poste.empresas
+            .split(",")
+            .map((e) => `<li>${e.trim()}</li>`)
+            .join("");
           const marker = L.marker([poste.lat, poste.lon], { icon: icone });
           marker.bindPopup(
-            `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b> ${poste.empresas}`
+            `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b>
+          <div style="max-height: 120px; overflow-y: auto; margin-top: 5px;">
+            <ul style="padding-left: 18px; margin: 0;">${listaEmpresas}</ul>
+          </div>
+`
           );
           marker.bindTooltip(
             `ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`,
@@ -262,66 +327,3 @@
     </script>
   </body>
 </html>
-<!-- Adicione este input no painel de busca -->
-<input type="text" id="busca-rua" placeholder="Buscar por rua" />
-<button onclick="buscarPorRua()">🛣 Rua</button>
-
-<script>
-  function buscarPorRua() {
-    const termoRua = document
-      .getElementById("busca-rua")
-      .value.trim()
-      .toLowerCase();
-    if (!termoRua) return alert("Digite uma rua válida.");
-
-    markers.clearLayers();
-
-    const encontrados = todosPostes.filter((poste) => {
-      if (!poste.resumo) return false;
-      return poste.resumo.toLowerCase().includes(termoRua);
-    });
-
-    if (encontrados.length === 0) {
-      alert("Nenhum poste encontrado nesta rua.");
-      return;
-    }
-
-    let verdes = 0;
-    let vermelhos = 0;
-
-    encontrados.forEach((poste) => {
-      const qtdEmpresas = poste.empresas.split(",").length;
-      const cor = qtdEmpresas > 4 ? "red" : "green";
-      if (cor === "red") vermelhos++;
-      else verdes++;
-
-      const icone = L.divIcon({
-        className: "",
-        html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
-        iconSize: [16, 16],
-        iconAnchor: [8, 8],
-      });
-
-      const marker = L.marker([poste.lat, poste.lon], { icon: icone });
-      marker.bindPopup(
-        `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b> ${poste.empresas}`
-      );
-      marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
-        direction: "top",
-      });
-      markers.addLayer(marker);
-    });
-
-    map.addLayer(markers);
-
-    const mediaLat =
-      encontrados.reduce((acc, p) => acc + p.lat, 0) / encontrados.length;
-    const mediaLon =
-      encontrados.reduce((acc, p) => acc + p.lon, 0) / encontrados.length;
-    map.setView([mediaLat, mediaLon], 15);
-
-    alert(
-      `Rua encontrada com ${encontrados.length} postes.\nVerdes: ${verdes} | Vermelhos: ${vermelhos}`
-    );
-  }
-</script>
