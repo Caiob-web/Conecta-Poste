@@ -22,8 +22,8 @@ const poolB = new Pool({
 // 🔍 Rota dinâmica para buscar todos os postes por cidade
 app.get("/api/postes/:cidade", async (req, res) => {
   const cidade = req.params.cidade.toLowerCase();
-  const pool = cidade === "cidade-a" ? poolA :
-               cidade === "cidade-b" ? poolB : null;
+  const pool =
+    cidade === "cidade-a" ? poolA : cidade === "cidade-b" ? poolB : null;
 
   if (!pool) return res.status(400).json({ error: "Cidade inválida" });
 
@@ -41,7 +41,7 @@ app.get("/api/postes/:cidade", async (req, res) => {
     console.log(`📍 ${rows.length} postes carregados de ${cidade}`);
     res.json(rows);
   } catch (err) {
-    console.error(`Erro na consulta de postes (${cidade}):`, err);
+    console.error(`Erro na consulta de postes (${cidade}):`, err.stack);
     res.status(500).json({ error: `Erro no servidor - ${cidade}` });
   }
 });
@@ -58,8 +58,12 @@ app.get("/api/postes_bbox/:cidade", async (req, res) => {
     return res.status(400).json({ error: "Parâmetro 'bbox' inválido" });
   }
 
-  const pool = cidade.toLowerCase() === "cidade-a" ? poolA :
-               cidade.toLowerCase() === "cidade-b" ? poolB : null;
+  const pool =
+    cidade.toLowerCase() === "cidade-a"
+      ? poolA
+      : cidade.toLowerCase() === "cidade-b"
+      ? poolB
+      : null;
 
   if (!pool) return res.status(400).json({ error: "Cidade inválida" });
 
