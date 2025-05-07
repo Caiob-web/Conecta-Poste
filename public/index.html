@@ -18,12 +18,12 @@
       }
       .painel-busca {
         position: absolute;
+        top: 10px;
+        right: 10px; /* MUDANÇA: agora o painel está à direita */
         z-index: 1000;
         background: white;
         padding: 10px;
         border-radius: 8px;
-        top: 10px;
-        left: 10px;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
         font-family: sans-serif;
       }
@@ -61,10 +61,26 @@
         margin-right: 8px;
         border: 1px solid #555;
       }
+      .botao-topo {
+        position: absolute;
+        right: 10px;
+        z-index: 1001;
+        padding: 5px 10px;
+        border-radius: 6px;
+        border: none;
+        font-family: sans-serif;
+        cursor: pointer;
+        box-shadow: 0 0 6px rgba(0,0,0,0.2);
+      }
+      #togglePainel { top: 10px; }
+      #localizacaoUsuario { top: 50px; }
     </style>
   </head>
   <body>
-    <div class="painel-busca">
+    <button id="togglePainel" class="botao-topo">🙈 Esconder Painel</button>
+    <button id="localizacaoUsuario" class="botao-topo">📍 Minha Localização</button>
+
+    <div class="painel-busca" id="painelBusca">
       <input type="text" id="busca-id" placeholder="Buscar por ID do poste" />
       <input type="text" id="busca-coord" placeholder="Latitude,Longitude" />
       <input type="text" id="filtro-empresa" list="lista-empresas" placeholder="Filtrar por empresa" />
@@ -113,12 +129,10 @@
         .then((res) => res.json())
         .then((data) => {
           const agrupado = {};
-
           data.forEach((poste) => {
             if (!poste.coordenadas) return;
             const [lat, lon] = poste.coordenadas.split(",").map(Number);
             if (isNaN(lat) || isNaN(lon)) return;
-
             const key = poste.id_poste;
             if (!agrupado[key]) {
               agrupado[key] = {
@@ -206,38 +220,28 @@
         if (isNaN(lat) || isNaN(lon)) return alert("Coordenadas inválidas.");
 
         map.setView([lat, lon], 18);
-        L.popup()
-          .setLatLng([lat, lon])
-          .setContent(`<b>Coordenada:</b><br>${lat}, ${lon}`)
-          .openOn(map);
+        L.popup().setLatLng([lat, lon]).setContent(`<b>Coordenada:</b><br>${lat}, ${lon}`).openOn(map);
       }
 
       function filtrarEmpresa() {
         const termo = document.getElementById("filtro-empresa").value.trim().toLowerCase();
         if (!termo) return;
         markers.clearLayers();
-
         todosPostes.forEach((poste) => {
           const empresasString = poste.empresas.join(", ").toLowerCase();
           if (!empresasString.includes(termo)) return;
           const qtdEmpresas = poste.empresas.length;
           const cor = qtdEmpresas >= 5 ? "red" : "green";
-
           const icone = L.divIcon({
             className: "",
             html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
             iconSize: [16, 16],
             iconAnchor: [8, 8],
           });
-
           const listaEmpresas = poste.empresas.map((e) => `<li>${e}</li>`).join("");
           const marker = L.marker([poste.lat, poste.lon], { icon: icone });
-          marker.bindPopup(
-            `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b><ul>${listaEmpresas}</ul>`
-          );
-          marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
-            direction: "top",
-          });
+          marker.bindPopup(`<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b><ul>${listaEmpresas}</ul>`);
+          marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, { direction: "top" });
           markers.addLayer(marker);
         });
       }
@@ -247,26 +251,52 @@
         todosPostes.forEach((poste) => {
           const qtdEmpresas = poste.empresas.length;
           const cor = qtdEmpresas >= 5 ? "red" : "green";
-
           const icone = L.divIcon({
             className: "",
             html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
             iconSize: [16, 16],
             iconAnchor: [8, 8],
           });
-
           const listaEmpresas = poste.empresas.map((e) => `<li>${e}</li>`).join("");
           const marker = L.marker([poste.lat, poste.lon], { icon: icone });
-          marker.bindPopup(
-            `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b><ul>${listaEmpresas}</ul>`
-          );
-          marker.bindTooltip(
-            `ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`,
-            { direction: "top" }
-          );
+          marker.bindPopup(`<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b><ul>${listaEmpresas}</ul>`);
+          marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, { direction: "top" });
           markers.addLayer(marker);
         });
       }
+
+      // Botão de esconder painel
+      document.getElementById("togglePainel").addEventListener("click", () => {
+        const painel = document.getElementById("painelBusca");
+        if (painel.style.display === "none") {
+          painel.style.display = "block";
+          document.getElementById("togglePainel").textContent = "🙈 Esconder Painel";
+        } else {
+          painel.style.display = "none";
+          document.getElementById("togglePainel").textContent = "👁️ Mostrar Painel";
+        }
+      });
+
+      // Botão de localização
+      document.getElementById("localizacaoUsuario").addEventListener("click", () => {
+        if (!navigator.geolocation) {
+          alert("Geolocalização não suportada pelo navegador.");
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const { latitude, longitude } = pos.coords;
+            map.setView([latitude, longitude], 17);
+            L.marker([latitude, longitude])
+              .addTo(map)
+              .bindPopup("📍 Você está aqui!")
+              .openPopup();
+          },
+          (err) => {
+            alert("Erro ao buscar localização: " + err.message);
+          }
+        );
+      });
     </script>
   </body>
 </html>
