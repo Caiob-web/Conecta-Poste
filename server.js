@@ -8,15 +8,25 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.static("public")); // frontend estático
 
-// 🔌 Conexão com o banco (Railway)
-const pool = new Pool({
-  connectionString:
-    "",
+// 🔌 Conexões com os bancos de dados
+const poolA = new Pool({
+  connectionString: process.env.DATABASE_CIDADE_A,
   ssl: { rejectUnauthorized: false },
 });
 
-// 🔍 Endpoint para buscar os postes
-app.get("/api/postes", async (req, res) => {
+const poolB = new Pool({
+  connectionString: process.env.DATABASE_CIDADE_B,
+  ssl: { rejectUnauthorized: false },
+});
+
+// 🔍 Rota dinâmica para buscar todos os postes por cidade
+app.get("/api/postes/:cidade", async (req, res) => {
+  const cidade = req.params.cidade.toLowerCase();
+  const pool = cidade === "cidade-a" ? poolA :
+               cidade === "cidade-b" ? poolB : null;
+
+  if (!pool) return res.status(400).json({ error: "Cidade inválida" });
+
   try {
     const { rows } = await pool.query(`
       SELECT 
@@ -28,39 +38,30 @@ app.get("/api/postes", async (req, res) => {
       GROUP BY id_poste, coordenadas
     `);
 
-    console.log(`🔍 ${rows.length} postes consultados do banco`);
+    console.log(`📍 ${rows.length} postes carregados de ${cidade}`);
     res.json(rows);
   } catch (err) {
-    console.error("Erro ao buscar dados:", err);
-    res.status(500).json({ error: "Erro no servidor" });
+    console.error(`Erro na consulta de postes (${cidade}):`, err);
+    res.status(500).json({ error: `Erro no servidor - ${cidade}` });
   }
 });
 
-// 🧭 Rota fallback
-app.use((req, res) => {
-  res.status(404).send("Rota não encontrada");
-});
-
-// 🚀 Inicializa servidor
-app.listen(port, () => {
-  console.log(`🚀 Servidor rodando na porta ${port}`);
-});
-
-// 🛠️ Função para alternar o painel (não deveria estar aqui, mas mantive conforme seu pedido)
-function alternarPainel() {
-  const painel = document.querySelector(".painel-busca");
-  painel.classList.toggle("hidden");
-}
-
-// 🔍 Endpoint para buscar postes dentro de um BBOX
-app.get("/api/postes_bbox", async (req, res) => {
+// 🔍 Rota dinâmica para buscar postes por BBOX e cidade
+app.get("/api/postes_bbox/:cidade", async (req, res) => {
+  const { cidade } = req.params;
   const { bbox } = req.query;
+
   if (!bbox) return res.status(400).json({ error: "Parâmetro 'bbox' ausente" });
 
   const [south, west, north, east] = bbox.split(",").map(Number);
   if ([south, west, north, east].some((n) => isNaN(n))) {
     return res.status(400).json({ error: "Parâmetro 'bbox' inválido" });
   }
+
+  const pool = cidade.toLowerCase() === "cidade-a" ? poolA :
+               cidade.toLowerCase() === "cidade-b" ? poolB : null;
+
+  if (!pool) return res.status(400).json({ error: "Cidade inválida" });
 
   try {
     const { rows } = await pool.query(
@@ -81,7 +82,17 @@ app.get("/api/postes_bbox", async (req, res) => {
 
     res.json(rows);
   } catch (err) {
-    console.error("Erro na consulta por BBox:", err);
-    res.status(500).json({ error: "Erro interno do servidor" });
+    console.error(`Erro na consulta BBOX (${cidade}):`, err);
+    res.status(500).json({ error: `Erro interno do servidor - ${cidade}` });
   }
+});
+
+// 🧭 Rota fallback
+app.use((req, res) => {
+  res.status(404).send("Rota não encontrada");
+});
+
+// 🚀 Inicializa servidor
+app.listen(port, () => {
+  console.log(`🚀 Servidor rodando na porta ${port}`);
 });
