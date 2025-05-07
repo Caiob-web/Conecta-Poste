@@ -18,13 +18,9 @@ const pools = {
     connectionString: "postgresql://postgres:KAjIlSvDPTBADDaKJbwJYIAGQlWwleAl@tramway.proxy.rlwy.net:37155/railway",
     ssl: { rejectUnauthorized: false },
   }),
-  jacarei: new Pool({
-    connectionString: "postgresql://usuario:senha@host3:porta3/railway",
-    ssl: { rejectUnauthorized: false },
-  }),
 };
 
-// Unifica dados de todos os bancos
+// ✅ Consulta unificada
 app.get("/api/todos_postes", async (req, res) => {
   const queries = Object.entries(pools).map(async ([cidade, pool]) => {
     try {
@@ -37,9 +33,10 @@ app.get("/api/todos_postes", async (req, res) => {
         WHERE coordenadas IS NOT NULL AND TRIM(coordenadas) <> ''
         GROUP BY id_poste, coordenadas
       `);
+      console.log(`✅ ${cidade}: ${result.rows.length} postes`);
       return result.rows;
     } catch (err) {
-      console.error(`Erro na cidade ${cidade}:`, err.message);
+      console.error(`❌ Erro na cidade ${cidade}:`, err.message);
       return [];
     }
   });
@@ -47,9 +44,10 @@ app.get("/api/todos_postes", async (req, res) => {
   try {
     const results = await Promise.all(queries);
     const allPostes = results.flat();
+    console.log(`🔍 Total geral: ${allPostes.length} postes`);
     res.json(allPostes);
   } catch (err) {
-    console.error("Erro geral:", err.message);
+    console.error("❌ Erro geral:", err.message);
     res.status(500).json({ error: "Erro ao consultar os bancos" });
   }
 });

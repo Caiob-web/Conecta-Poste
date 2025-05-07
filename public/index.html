@@ -7,60 +7,23 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
     <style>
-      html, body {
-        margin: 0;
-        padding: 0;
-        height: 100%;
-      }
-      #map {
-        height: 100vh;
-        width: 100vw;
-      }
+      html, body { margin: 0; padding: 0; height: 100%; }
+      #map { height: 100vh; width: 100vw; }
       .painel-busca {
-        position: absolute;
-        z-index: 1000;
-        background: white;
-        padding: 10px;
-        border-radius: 8px;
-        top: 30px;
-        right: 20px;
-        width: 260px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-        font-family: sans-serif;
+        position: absolute; z-index: 1000; background: white; padding: 10px;
+        border-radius: 8px; top: 30px; right: 20px; width: 260px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2); font-family: sans-serif;
       }
-      .painel-busca input,
-      .painel-busca select {
-        margin-bottom: 5px;
-        width: 100%;
-        padding: 5px;
-        display: block;
-      }
-      .painel-busca button {
-        margin-top: 5px;
-        margin-right: 5px;
-        padding: 5px 10px;
-      }
+      .painel-busca input { margin-bottom: 5px; width: 100%; padding: 5px; display: block; }
+      .painel-busca button { margin-top: 5px; margin-right: 5px; padding: 5px 10px; }
       .legenda {
-        position: absolute;
-        bottom: 10px;
-        right: 10px;
-        background: white;
-        padding: 10px;
-        border-radius: 8px;
-        font-family: sans-serif;
-        font-size: 14px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        position: absolute; bottom: 10px; right: 10px; background: white;
+        padding: 10px; border-radius: 8px; font-family: sans-serif;
+        font-size: 14px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
       }
-      .legenda-item {
-        display: flex;
-        align-items: center;
-        margin-bottom: 5px;
-      }
+      .legenda-item { display: flex; align-items: center; margin-bottom: 5px; }
       .bolinha {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        margin-right: 8px;
+        width: 12px; height: 12px; border-radius: 50%; margin-right: 8px;
         border: 1px solid #555;
       }
     </style>
@@ -70,32 +33,19 @@
     <button onclick="centralizarNoLocal()" style="position: absolute; top: 50px; right: 300px; z-index: 1001; padding: 6px 10px;">📍 Meu Local</button>
 
     <div class="painel-busca">
-      <select id="cidade" onchange="carregarPostesVisiveis()">
-        <option value="mogi">Mogi</option>
-        <option value="santabranca">Santa Branca</option>
-        <option value="jacarei">Jacareí</option>
-      </select>
       <input type="text" id="busca-id" placeholder="Buscar por ID do poste" />
       <input type="text" id="busca-coord" placeholder="Latitude,Longitude" />
       <input type="text" id="filtro-empresa" list="lista-empresas" placeholder="Filtrar por empresa" />
       <datalist id="lista-empresas"></datalist>
-      <input type="text" id="busca-rua" placeholder="Buscar por rua" />
       <button onclick="buscarID()">🔍 ID</button>
       <button onclick="buscarCoordenada()">📍 Coordenada</button>
       <button onclick="filtrarEmpresa()">🏢 Filtrar</button>
       <button onclick="resetarMapa()">🔄 Mostrar tudo</button>
-      <button onclick="buscarPorRua()">🛣 Rua</button>
-      <button onclick="limparBusca()">🧹 Limpar</button>
-      <div id="resumo-rua" style="margin-top: 10px; font-size: 14px"></div>
     </div>
 
     <div class="legenda">
-      <div class="legenda-item">
-        <div class="bolinha" style="background: green"></div> Até 5 empresas
-      </div>
-      <div class="legenda-item">
-        <div class="bolinha" style="background: red"></div> Mais de 5 empresas
-      </div>
+      <div class="legenda-item"><div class="bolinha" style="background: green"></div>Até 5 empresas</div>
+      <div class="legenda-item"><div class="bolinha" style="background: red"></div>Mais de 5 empresas</div>
     </div>
 
     <div id="map"></div>
@@ -103,82 +53,51 @@
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
     <script>
-      const map = L.map("map", { preferCanvas: true }).setView([-23.2, -45.9], 12);
+      const map = L.map("map").setView([-23.2, -45.9], 12);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
-
-      const markers = L.markerClusterGroup({
-        spiderfyOnMaxZoom: true,
-        showCoverageOnHover: false,
-        zoomToBoundsOnClick: false,
-        maxClusterRadius: 60,
-        disableClusteringAtZoom: 17,
-      });
-
-      const todosPostes = [];
+      const markers = L.markerClusterGroup({ spiderfyOnMaxZoom: true, showCoverageOnHover: false, zoomToBoundsOnClick: false, maxClusterRadius: 60, disableClusteringAtZoom: 17 });
+      let todosPostes = [];
       const empresasContagem = {};
 
-      function carregarPostesVisiveis() {
-        const bounds = map.getBounds();
-        const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
-        const cidade = document.getElementById("cidade").value;
-
-        fetch(`/api/postes_bbox?bbox=${bbox}&cidade=${cidade}`)
-          .then((res) => res.json())
-          .then((data) => {
-            markers.clearLayers();
-            todosPostes.length = 0;
-            Object.keys(empresasContagem).forEach(e => empresasContagem[e] = 0);
-
-            data.forEach((poste) => {
-              if (!poste.coordenadas) return;
-              const [lat, lon] = poste.coordenadas.split(",").map(Number);
-              if (isNaN(lat) || isNaN(lon)) return;
-
-              const empresas = poste.empresas.split(",").map((e) => e.trim());
-              empresas.forEach((empresa) => {
-                if (!empresasContagem[empresa]) empresasContagem[empresa] = 0;
-                empresasContagem[empresa]++;
-              });
-
-              const qtdEmpresas = empresas.length;
-              const cor = qtdEmpresas >= 5 ? "red" : "green";
-
-              const icone = L.divIcon({
-                className: "",
-                html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
-                iconSize: [16, 16],
-                iconAnchor: [8, 8],
-              });
-
-              const marker = L.marker([lat, lon], { icon: icone });
-              marker.bindPopup(`
-                <b>ID do Poste:</b> ${poste.id_poste}<br>
-                <b>Empresas:</b><br>${empresas.map(e => `• ${e}`).join("<br>")}
-              `);
-              marker.bindTooltip(
-                `ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`,
-                { direction: "top" }
-              );
-              markers.addLayer(marker);
-              todosPostes.push({ ...poste, lat, lon });
-            });
-
-            map.addLayer(markers);
-            preencherAutocomplete();
+      async function carregarTodosPostes() {
+        const res = await fetch("/api/todos_postes");
+        const data = await res.json();
+        todosPostes = [];
+        Object.keys(empresasContagem).forEach(e => delete empresasContagem[e]);
+        markers.clearLayers();
+        const novosMarkers = [];
+        data.forEach((poste) => {
+          if (!poste.coordenadas) return;
+          const [lat, lon] = poste.coordenadas.split(",").map(Number);
+          if (isNaN(lat) || isNaN(lon)) return;
+          const empresas = poste.empresas.split(",").map((e) => e.trim());
+          empresas.forEach((empresa) => {
+            if (!empresasContagem[empresa]) empresasContagem[empresa] = 0;
+            empresasContagem[empresa]++;
           });
+          const qtdEmpresas = empresas.length;
+          const cor = qtdEmpresas >= 5 ? "red" : "green";
+          const icone = L.divIcon({ className: "", html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`, iconSize: [16, 16], iconAnchor: [8, 8] });
+          const marker = L.marker([lat, lon], { icon: icone });
+          marker.bindPopup(`<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b><br>${empresas.map((e) => `• ${e}`).join("<br>")}`);
+          marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, { direction: "top" });
+          novosMarkers.push(marker);
+          todosPostes.push({ ...poste, lat, lon });
+        });
+        markers.addLayers(novosMarkers);
+        map.addLayer(markers);
+        preencherAutocomplete();
       }
 
       function preencherAutocomplete() {
         const lista = document.getElementById("lista-empresas");
         lista.innerHTML = "";
-        Object.keys(empresasContagem)
-          .sort()
-          .forEach((empresa) => {
-            const option = document.createElement("option");
-            option.value = empresa;
-            option.label = `${empresa} (${empresasContagem[empresa]} postes)`;
-            lista.appendChild(option);
-          });
+        Object.keys(empresasContagem).sort().forEach((empresa) => {
+          const option = document.createElement("option");
+          option.value = empresa;
+          option.label = `${empresa} (${empresasContagem[empresa]} postes)`;
+          lista.appendChild(option);
+        });
       }
 
       function buscarID() {
@@ -186,27 +105,51 @@
         const resultado = todosPostes.find((p) => p.id_poste.toString() === id);
         if (resultado) {
           map.setView([resultado.lat, resultado.lon], 18);
-          L.popup()
-            .setLatLng([resultado.lat, resultado.lon])
-            .setContent(`<b>ID:</b> ${resultado.id_poste}<br><b>Empresas:</b><br>${resultado.empresas}`)
-            .openOn(map);
+          L.popup().setLatLng([resultado.lat, resultado.lon]).setContent(`<b>ID:</b> ${resultado.id_poste}<br><b>Empresas:</b><br>${resultado.empresas}`).openOn(map);
         } else {
           alert("Poste não encontrado.");
         }
       }
 
       function buscarCoordenada() {
-        const coordInput = document.getElementById("busca-coord").value.trim();
-        const partes = coordInput.split(",");
+        const valor = document.getElementById("busca-coord").value.trim();
+        const partes = valor.split(",");
         if (partes.length !== 2) return alert("Use o formato: lat,lon");
         const lat = parseFloat(partes[0]);
         const lon = parseFloat(partes[1]);
         if (isNaN(lat) || isNaN(lon)) return alert("Coordenadas inválidas.");
         map.setView([lat, lon], 18);
-        L.popup()
-          .setLatLng([lat, lon])
-          .setContent(`<b>Coordenada:</b><br>${lat}, ${lon}`)
-          .openOn(map);
+        L.popup().setLatLng([lat, lon]).setContent(`<b>Coordenada:</b><br>${lat}, ${lon}`).openOn(map);
+      }
+
+      function filtrarEmpresa() {
+        const termo = document.getElementById("filtro-empresa").value.trim().toLowerCase();
+        if (!termo) return;
+        markers.clearLayers();
+        todosPostes.forEach((poste) => {
+          if (!poste.empresas.toLowerCase().includes(termo)) return;
+          const qtdEmpresas = poste.empresas.split(",").length;
+          const cor = qtdEmpresas >= 5 ? "red" : "green";
+          const icone = L.divIcon({ className: "", html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>` });
+          const marker = L.marker([poste.lat, poste.lon], { icon: icone });
+          marker.bindPopup(`<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b><br>${poste.empresas.split(",").map(e => `• ${e.trim()}`).join("<br>")}`);
+          marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, { direction: "top" });
+          markers.addLayer(marker);
+        });
+      }
+
+      function resetarMapa() {
+        document.getElementById("filtro-empresa").value = "";
+        markers.clearLayers();
+        todosPostes.forEach((poste) => {
+          const qtdEmpresas = poste.empresas.split(",").length;
+          const cor = qtdEmpresas >= 5 ? "red" : "green";
+          const icone = L.divIcon({ className: "", html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>` });
+          const marker = L.marker([poste.lat, poste.lon], { icon: icone });
+          marker.bindPopup(`<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b><br>${poste.empresas.split(",").map(e => `• ${e.trim()}`).join("<br>")}`);
+          marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, { direction: "top" });
+          markers.addLayer(marker);
+        });
       }
 
       function togglePainel() {
@@ -220,11 +163,8 @@
             (position) => {
               const lat = position.coords.latitude;
               const lon = position.coords.longitude;
-              map.flyTo([lat, lon], 17, { duration: 1.2 });
-              L.popup()
-                .setLatLng([lat, lon])
-                .setContent(`<b>Você está aqui:</b><br>${lat.toFixed(6)}, ${lon.toFixed(6)}`)
-                .openOn(map);
+              map.flyTo([lat, lon], 17);
+              L.popup().setLatLng([lat, lon]).setContent(`<b>Você está aqui:</b><br>${lat}, ${lon}`).openOn(map);
             },
             () => alert("Não foi possível acessar sua localização.")
           );
@@ -233,8 +173,7 @@
         }
       }
 
-      map.on("moveend", carregarPostesVisiveis);
-      carregarPostesVisiveis();
+      carregarTodosPostes();
     </script>
   </body>
 </html>
