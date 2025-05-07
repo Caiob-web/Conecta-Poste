@@ -6,9 +6,9 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(cors());
-app.use(express.static("public"));
+app.use(express.static("public")); // Pasta onde está o index.html
 
-// Pools de cidades
+// Conexões com bancos por cidade
 const pools = {
   mogi: new Pool({
     connectionString: "postgresql://postgres:SFUszjwNHVODKEaFsoShHfHSOmyTmSzm@crossover.proxy.rlwy.net:28652/railway",
@@ -20,14 +20,14 @@ const pools = {
   }),
 };
 
-// ✅ Consulta unificada
+// Endpoint principal que retorna TODOS os postes unificados
 app.get("/api/todos_postes", async (req, res) => {
   const queries = Object.entries(pools).map(async ([cidade, pool]) => {
     try {
       const result = await pool.query(`
         SELECT 
           id_poste,
-          MAX(coordenadas) AS coordenadas,
+          MAX(coordenadas) AS coordenadas, -- usa uma coordenada qualquer para representar
           STRING_AGG(DISTINCT UPPER(TRIM(empresa)), ', ') AS empresas
         FROM dados_poste
         WHERE coordenadas IS NOT NULL AND TRIM(coordenadas) <> ''
@@ -43,9 +43,9 @@ app.get("/api/todos_postes", async (req, res) => {
 
   try {
     const results = await Promise.all(queries);
-    const allPostes = results.flat();
+    const allPostes = results.flat(); // junta todos os resultados
     console.log(`🔍 Total geral: ${allPostes.length} postes`);
-    res.json(allPostes);
+    res.json(allPostes); // envia pro frontend
   } catch (err) {
     console.error("❌ Erro geral:", err.message);
     res.status(500).json({ error: "Erro ao consultar os bancos" });
