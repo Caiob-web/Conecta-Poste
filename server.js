@@ -10,7 +10,12 @@ app.use(express.static("public")); // frontend estático
 
 // 🔄 NOVA CONEXÃO COM O RAILWAY
 const pool = new Pool({
-  connectionString: "postgresql://postgres:PqaBAbgwBoKAIEnyIDNKeorFOgMELWNI@ballast.proxy.rlwy.net:58816/railway",
+  connectionString: "postgresql://postgres:SFUszjwNHVODKEaFsoShHfHSOmyTmSzm@crossover.proxy.rlwy.net:28652/railway
+
+
+
+
+",
   ssl: { rejectUnauthorized: false },
 });
 
