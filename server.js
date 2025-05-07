@@ -27,11 +27,11 @@ app.get("/api/todos_postes", async (req, res) => {
       const result = await pool.query(`
         SELECT 
           id_poste,
-          STRING_AGG(DISTINCT UPPER(TRIM(empresa)), ', ') AS empresas,
-          coordenadas
+          MAX(coordenadas) AS coordenadas,
+          STRING_AGG(DISTINCT UPPER(TRIM(empresa)), ', ') AS empresas
         FROM dados_poste
         WHERE coordenadas IS NOT NULL AND TRIM(coordenadas) <> ''
-        GROUP BY id_poste, coordenadas
+        GROUP BY id_poste
       `);
       console.log(`✅ ${cidade}: ${result.rows.length} postes`);
       return result.rows;
