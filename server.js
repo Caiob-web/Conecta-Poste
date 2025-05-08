@@ -8,17 +8,39 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.static("public")); // frontend estático
 
-// 🔄 Conexão com o Railway
-const pool = new Pool({
-  connectionString: "postgresql://postgres:rbhaEXKeIrsMmfCfcVQxACBtCZcVmePc@hopper.proxy.rlwy.net:43519/railway",
-  ssl: { rejectUnauthorized: false },
-});
+// 🔌 Pools de conexões para múltiplos bancos
+const pools = {
+  sjc: new Pool({
+    connectionString: "postgresql://postgres:rbhaEXKeIrsMmfCfcVQxACBtCZcVmePc@hopper.proxy.rlwy.net:43519/railway",
+    ssl: { rejectUnauthorized: false },
+  }),
+  mogi: new Pool({
+    connectionString: "postgresql://postgres:XzHyeNIcbThuKDxEsgbZBTrdpNUTIfNz@tramway.proxy.rlwy.net:39024/railway",
+    ssl: { rejectUnauthorized: false },
+  }),
+};
 
-// ✅ Consulta direta à tabela dados_poste
+// 🔍 Consulta unificada a todos os bancos
 app.get("/api/postes", async (req, res) => {
   try {
-    const { rows } = await pool.query("SELECT * FROM dados_poste");
-    res.json(rows);
+    const results = await Promise.all(
+      Object.entries(pools).map(async ([cidade, pool]) => {
+        const { rows } = await pool.query(`
+          SELECT 
+            id_poste,
+            empresa,
+            resumo,
+            coordenadas,
+            nome_municipio
+          FROM dados_poste
+          WHERE coordenadas IS NOT NULL AND TRIM(coordenadas) <> ''
+        `);
+        return rows;
+      })
+    );
+
+    const todosPostes = results.flat(); // Junta todos os dados
+    res.json(todosPostes);
   } catch (err) {
     console.error("Erro ao buscar dados:", err);
     res.status(500).json({ error: "Erro no servidor" });
