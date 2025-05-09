@@ -6,13 +6,13 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution: "&copy; OpenStreetMap contributors",
 }).addTo(mapa);
 
-// Layer para marcadores
+// Layer de marcadores
 const marcadores = L.layerGroup().addTo(mapa);
 
-// Array para armazenar todos os postes
+// Lista global de postes
 let todosPostes = [];
 
-// Distância entre 2 coordenadas (Haversine)
+// Função para calcular distância (Haversine)
 function getDistanciaMetros(lat1, lon1, lat2, lon2) {
   const R = 6371e3;
   const rad = Math.PI / 180;
@@ -52,7 +52,7 @@ function plotarPostesNoMapa(dados) {
   }
 }
 
-// Busca por rua via Nominatim + filtro por distância
+// Busca por rua com geocodificação reversa + filtro por distância
 async function buscarPorRua() {
   const ruaBusca = document.getElementById("busca-rua").value.trim();
   if (!ruaBusca) {
@@ -89,4 +89,55 @@ async function buscarPorRua() {
     const [plat, plon] = poste.coordenadas.split(",").map(Number);
     const icone = L.divIcon({
       className: "",
-      html: `<div style="
+      html: `<div style="width:14px;height:14px;border-radius:50%;background:green;border:2px solid white;"></div>`,
+      iconSize: [16, 16],
+      iconAnchor: [8, 8],
+    });
+
+    const marker = L.marker([plat, plon], { icon: icone });
+    marker.bindPopup(`
+      <b>ID:</b> ${poste.id_poste}<br>
+      <b>Empresa:</b> ${poste.empresa}
+    `);
+    marcadores.addLayer(marker);
+  });
+
+  mapa.setView([lat, lon], 16);
+}
+
+// Autocompletar rua com Nominatim
+document.getElementById("busca-rua").addEventListener("input", async function () {
+  const termo = this.value.trim();
+  if (termo.length < 4) return;
+
+  try {
+    const resposta = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(termo)}`);
+    const resultados = await resposta.json();
+
+    const datalist = document.getElementById("sugestoes-rua");
+    datalist.innerHTML = "";
+
+    resultados.forEach((item) => {
+      const option = document.createElement("option");
+      option.value = item.display_name;
+      datalist.appendChild(option);
+    });
+  } catch (e) {
+    console.error("Erro ao buscar sugestões:", e);
+  }
+});
+
+// Carrega postes da API
+async function carregarPostes() {
+  try {
+    const resposta = await fetch("/api/postes");
+    const dados = await resposta.json();
+    todosPostes = dados;
+    plotarPostesNoMapa(todosPostes);
+  } catch (erro) {
+    console.error("Erro ao carregar postes:", erro);
+    alert("Erro ao carregar os dados dos postes.");
+  }
+}
+
+carregarPostes();
