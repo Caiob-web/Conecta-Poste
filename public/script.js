@@ -54,19 +54,14 @@ fetch("/api/postes")
         iconAnchor: [8, 8],
       });
 
-      const listaEmpresas = empresasArray
-        .map((e) => `<li>${e}</li>`)
-        .join("");
+      const listaEmpresas = empresasArray.map((e) => `<li>${e}</li>`).join("");
       const marker = L.marker([poste.lat, poste.lon], { icon: icone });
       marker.bindPopup(
         `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b><ul>${listaEmpresas}</ul>`
       );
-      marker.bindTooltip(
-        `ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`,
-        {
-          direction: "top",
-        }
-      );
+      marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
+        direction: "top",
+      });
 
       markers.addLayer(marker);
       todosPostes.push({ ...poste, empresas: empresasArray });
@@ -165,7 +160,9 @@ function buscarPorRua() {
           iconSize: [16, 16],
           iconAnchor: [8, 8],
         });
-        const listaEmpresas = poste.empresas.map((e) => `<li>${e}</li>`).join("");
+        const listaEmpresas = poste.empresas
+          .map((e) => `<li>${e}</li>`)
+          .join("");
         const marker = L.marker([poste.lat, poste.lon], { icon: icone });
         marker.bindPopup(
           `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b><ul>${listaEmpresas}</ul>`
@@ -208,10 +205,9 @@ function filtrarEmpresa() {
     marker.bindPopup(
       `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b><ul>${listaEmpresas}</ul>`
     );
-    marker.bindTooltip(
-      `ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`,
-      { direction: "top" }
-    );
+    marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
+      direction: "top",
+    });
     markers.addLayer(marker);
   });
 }
@@ -232,10 +228,9 @@ function resetarMapa() {
     marker.bindPopup(
       `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b><ul>${listaEmpresas}</ul>`
     );
-    marker.bindTooltip(
-      `ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`,
-      { direction: "top" }
-    );
+    marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
+      direction: "top",
+    });
     markers.addLayer(marker);
   });
 }
@@ -245,34 +240,119 @@ document.getElementById("togglePainel").addEventListener("click", () => {
   const painel = document.getElementById("painelBusca");
   if (painel.style.display === "none") {
     painel.style.display = "block";
-    document.getElementById("togglePainel").textContent =
-      "🙈 Esconder Painel";
+    document.getElementById("togglePainel").textContent = "🙈 Esconder Painel";
   } else {
     painel.style.display = "none";
-    document.getElementById("togglePainel").textContent =
-      "👁️ Mostrar Painel";
+    document.getElementById("togglePainel").textContent = "👁️ Mostrar Painel";
   }
 });
 
 // Botão de localização
-document
-  .getElementById("localizacaoUsuario")
-  .addEventListener("click", () => {
-    if (!navigator.geolocation) {
-      alert("Geolocalização não suportada pelo navegador.");
-      return;
+document.getElementById("localizacaoUsuario").addEventListener("click", () => {
+  if (!navigator.geolocation) {
+    alert("Geolocalização não suportada pelo navegador.");
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const { latitude, longitude } = pos.coords;
+      map.setView([latitude, longitude], 17);
+      L.marker([latitude, longitude])
+        .addTo(map)
+        .bindPopup("📍 Você está aqui!")
+        .openPopup();
+    },
+    (err) => {
+      alert("Erro ao buscar localização: " + err.message);
     }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        map.setView([latitude, longitude], 17);
-        L.marker([latitude, longitude])
-          .addTo(map)
-          .bindPopup("📍 Você está aqui!")
-          .openPopup();
-      },
-      (err) => {
-        alert("Erro ao buscar localização: " + err.message);
-      }
-    );
+  );
+});
+document
+  .getElementById("busca-rua")
+  .addEventListener("input", async function () {
+    const termo = this.value.trim();
+    if (termo.length < 4) return;
+
+    try {
+      const resposta = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          termo
+        )}`
+      );
+      const resultados = await resposta.json();
+
+      const datalist = document.getElementById("sugestoes-rua");
+      datalist.innerHTML = "";
+
+      resultados.forEach((item) => {
+        const option = document.createElement("option");
+        option.value = item.display_name;
+        datalist.appendChild(option);
+      });
+    } catch (erro) {
+      console.error("Erro ao sugerir ruas:", erro);
+    }
   });
+
+function buscarPorRua() {
+  const rua = document.getElementById("busca-rua").value.trim();
+  if (!rua) return alert("Digite um nome de rua.");
+
+  fetch(
+    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+      rua
+    )}`
+  )
+    .then((res) => res.json())
+    .then((data) => {
+      if (!data.length) {
+        alert("Endereço não encontrado.");
+        return;
+      }
+
+      const { lat, lon } = data[0];
+
+      const encontrados = todosPostes.filter((p) => {
+        if (!p.lat || !p.lon) return false;
+        const dx = p.lat - lat;
+        const dy = p.lon - lon;
+        return Math.sqrt(dx * dx + dy * dy) < 0.001; // ~100m de raio
+      });
+
+      if (encontrados.length === 0) {
+        alert("Nenhum poste encontrado próximo à rua informada.");
+        return;
+      }
+
+      markers.clearLayers();
+
+      encontrados.forEach((poste) => {
+        const qtdEmpresas = poste.empresas.length;
+        const cor = qtdEmpresas >= 5 ? "red" : "green";
+        const icone = L.divIcon({
+          className: "",
+          html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
+        });
+        const listaEmpresas = poste.empresas
+          .map((e) => `<li>${e}</li>`)
+          .join("");
+        const marker = L.marker([poste.lat, poste.lon], { icon: icone });
+        marker.bindPopup(
+          `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b><ul>${listaEmpresas}</ul>`
+        );
+        marker.bindTooltip(
+          `ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`,
+          { direction: "top" }
+        );
+        markers.addLayer(marker);
+      });
+
+      map.setView([lat, lon], 16);
+    })
+    .catch((err) => {
+      console.error("Erro ao buscar rua:", err);
+      alert("Erro na busca de rua.");
+    });
+}
