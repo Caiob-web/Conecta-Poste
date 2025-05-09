@@ -18,6 +18,10 @@ const pools = {
     connectionString: "postgresql://postgres:XzHyeNIcbThuKDxEsgbZBTrdpNUTIfNz@tramway.proxy.rlwy.net:39024/railway",
     ssl: { rejectUnauthorized: false },
   }),
+  ln: new Pool({
+    connectionString: "postgresql://postgres:TFSZLSTrUhcRVEzdeToWmbOrxnkvWXdL@shuttle.proxy.rlwy.net:35000/railway",
+    ssl: { rejectUnauthorized: false },
+  }),
 };
 
 // 🔍 Consulta unificada a todos os bancos
