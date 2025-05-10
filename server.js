@@ -11,15 +11,23 @@ app.use(express.static("public")); // frontend estático
 // 🔌 Pools de conexões para múltiplos bancos
 const pools = {
   sjc: new Pool({
-    connectionString: "postgresql://postgres:rbhaEXKeIrsMmfCfcVQxACBtCZcVmePc@hopper.proxy.rlwy.net:43519/railway",
+    connectionString:
+      "postgresql://postgres:rbhaEXKeIrsMmfCfcVQxACBtCZcVmePc@hopper.proxy.rlwy.net:43519/railway",
     ssl: { rejectUnauthorized: false },
   }),
   mogi: new Pool({
-    connectionString: "postgresql://postgres:XzHyeNIcbThuKDxEsgbZBTrdpNUTIfNz@tramway.proxy.rlwy.net:39024/railway",
+    connectionString:
+      "postgresql://postgres:XzHyeNIcbThuKDxEsgbZBTrdpNUTIfNz@tramway.proxy.rlwy.net:39024/railway",
     ssl: { rejectUnauthorized: false },
   }),
   ln: new Pool({
-    connectionString: "postgresql://postgres:TFSZLSTrUhcRVEzdeToWmbOrxnkvWXdL@shuttle.proxy.rlwy.net:35000/railway",
+    connectionString:
+      "postgresql://postgres:TFSZLSTrUhcRVEzdeToWmbOrxnkvWXdL@shuttle.proxy.rlwy.net:35000/railway",
+    ssl: { rejectUnauthorized: false },
+  }),
+  guarulhos: new Pool({
+    connectionString:
+      "postgresql://postgres:CFEAhBpQDeuPwjJUmVzgjjlbBaamaUns@yamanote.proxy.rlwy.net:35807/railway",
     ssl: { rejectUnauthorized: false },
   }),
 };
