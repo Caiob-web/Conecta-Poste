@@ -30,8 +30,17 @@ const pools = {
       "postgresql://postgres:CFEAhBpQDeuPwjJUmVzgjjlbBaamaUns@yamanote.proxy.rlwy.net:35807/railway",
     ssl: { rejectUnauthorized: false },
   }),
+  guara: new Pool({
+    connectionString:
+      "postgresql://postgres:GoOYbaAbfzMwVkcSgNitAYkeUWKRCsrY@switchback.proxy.rlwy.net:10799/railway",
+    ssl: { rejectUnauthorized: false },
+  }),
+  demais: new Pool({
+    connectionString:
+      "postgresql://postgres:BajshBCFTNWXlnuGQXLNOwiyfvaLhAgJ@centerbeam.proxy.rlwy.net:45633/railway",
+    ssl: { rejectUnauthorized: false },
+  }),
 };
-
 // 🔍 Consulta unificada a todos os bancos
 app.get("/api/postes", async (req, res) => {
   try {
