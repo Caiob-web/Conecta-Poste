@@ -110,9 +110,34 @@
     </div>
 
     <div id="map"></div>
-
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
     <script src="script.js"></script>
+    <div id="widget-clima">
+  <div id="hora">🕒 Carregando hora...</div>
+  <div id="tempo">⛅ Carregando previsão do tempo...</div>
+</div>
+
+<style>
+  #widget-clima {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 12px;
+    padding: 10px 15px;
+    font-size: 14px;
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    max-width: 250px;
+  }
+  #widget-clima img {
+    height: 24px;
+    width: 24px;
+    vertical-align: middle;
+    margin-right: 4px;
+  }
+</style>
   </body>
 </html>

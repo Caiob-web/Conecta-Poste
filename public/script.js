@@ -356,3 +356,55 @@ function buscarPorRua() {
       alert("Erro na busca de rua.");
     });
 }
+navigator.geolocation.getCurrentPosition(success, error);
+
+function success(position) {
+  const latitude = position.coords.latitude;
+  const longitude = position.coords.longitude;
+
+  obterPrevisaoDoTempo(latitude, longitude);
+  mostrarHoraLocal(latitude, longitude);
+}
+
+function error(err) {
+  console.error("Erro ao obter localização:", err);
+}
+function mostrarHoraLocal(lat, lon) {
+  const now = new Date();
+  const hora = now.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  document.getElementById("hora").textContent = `🕒 ${hora}`;
+}
+function mostrarHoraLocal() {
+  const now = new Date();
+  const hora = now.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  document.getElementById("hora").textContent = `🕒 ${hora}`;
+}
+setInterval(mostrarHoraLocal, 60000); // atualiza a hora a cada 1 minuto
+
+function obterPrevisaoDoTempo(lat, lon) {
+  const API_KEY = "SUA_CHAVE_OPENWEATHER"; // ⬅️ substitua aqui pela sua chave
+  const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&lang=pt_br&units=metric&appid=${API_KEY}`;
+
+  fetch(url)
+    .then((res) => res.json())
+    .then((data) => {
+      const cidade = data.name;
+      const temp = data.main.temp.toFixed(1);
+      const descricao = data.weather[0].description;
+      const icone = data.weather[0].icon;
+      const imgIcone = `<img src="https://openweathermap.org/img/wn/${icone}@2x.png" alt="${descricao}" />`;
+
+      document.getElementById("tempo").innerHTML =
+        `${imgIcone} ${descricao}, ${temp}°C<br>📍 ${cidade}`;
+    })
+    .catch((err) => {
+      console.error("Erro ao buscar clima:", err);
+      document.getElementById("tempo").textContent = "Erro ao obter clima.";
+    });
+}
