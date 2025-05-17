@@ -5,9 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mapa de Postes</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"
+    />
     <style>
-      html, body {
+      html,
+      body {
         margin: 0;
         padding: 0;
         height: 100%;
@@ -82,19 +86,31 @@
   </head>
   <body>
     <button id="togglePainel" class="botao-topo">🙈 Esconder Painel</button>
-    <button id="localizacaoUsuario" class="botao-topo">📍 Minha Localização</button>
+    <button id="localizacaoUsuario" class="botao-topo">
+      📍 Minha Localização
+    </button>
 
     <div class="painel-busca" id="painelBusca">
       <input type="text" id="busca-id" placeholder="Buscar por ID do poste" />
       <input type="text" id="busca-coord" placeholder="Latitude,Longitude" />
-      <input type="text" id="busca-rua" placeholder="Buscar por rua" list="sugestoes-rua" />
+      <input
+        type="text"
+        id="busca-rua"
+        placeholder="Buscar por rua"
+        list="sugestoes-rua"
+      />
       <datalist id="sugestoes-rua"></datalist>
-      <input type="text" id="filtro-empresa" list="lista-empresas" placeholder="Filtrar por empresa" />
+      <input
+        type="text"
+        id="filtro-empresa"
+        list="lista-empresas"
+        placeholder="Filtrar por empresa"
+      />
       <datalist id="lista-empresas"></datalist>
       <button onclick="buscarID()">🔍 ID</button>
       <button onclick="buscarCoordenada()">📍 Coordenada</button>
       <button onclick="filtrarEmpresa()">🏢 Filtrar</button>
-     <button onclick="buscarPorRua()">🏠 Rua</button>
+      <button onclick="buscarPorRua()">🏠 Rua</button>
       <button onclick="resetarMapa()">🔄 Mostrar tudo</button>
     </div>
 
@@ -113,7 +129,8 @@
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
     <script src="script.js"></script>
-    <div id="widget-clima">
+     <!-- Widget flutuante de clima e hora -->
+<div id="widget-clima">
   <div id="hora">🕒 Carregando hora...</div>
   <div id="tempo">⛅ Carregando previsão do tempo...</div>
 </div>
@@ -121,17 +138,19 @@
 <style>
   #widget-clima {
     position: fixed;
-    top: 10px;
-    right: 10px;
+    bottom: 10px; /* Rodapé */
+    right: 10px;  /* Lado direito */
     background: white;
     border: 1px solid #ccc;
     border-radius: 12px;
     padding: 10px 15px;
     font-size: 14px;
     z-index: 1000;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    max-width: 250px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    max-width: 260px;
+    line-height: 1.4;
   }
+
   #widget-clima img {
     height: 24px;
     width: 24px;

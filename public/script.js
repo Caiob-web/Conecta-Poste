@@ -356,6 +356,7 @@ function buscarPorRua() {
       alert("Erro na busca de rua.");
     });
 }
+// Inicia busca por localização e exibe hora e clima
 navigator.geolocation.getCurrentPosition(success, error);
 
 function success(position) {
@@ -363,20 +364,14 @@ function success(position) {
   const longitude = position.coords.longitude;
 
   obterPrevisaoDoTempo(latitude, longitude);
-  mostrarHoraLocal(latitude, longitude);
+  mostrarHoraLocal();
 }
 
 function error(err) {
   console.error("Erro ao obter localização:", err);
 }
-function mostrarHoraLocal(lat, lon) {
-  const now = new Date();
-  const hora = now.toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  document.getElementById("hora").textContent = `🕒 ${hora}`;
-}
+
+// Exibe a hora local do dispositivo
 function mostrarHoraLocal() {
   const now = new Date();
   const hora = now.toLocaleTimeString("pt-BR", {
@@ -385,10 +380,13 @@ function mostrarHoraLocal() {
   });
   document.getElementById("hora").textContent = `🕒 ${hora}`;
 }
-setInterval(mostrarHoraLocal, 60000); // atualiza a hora a cada 1 minuto
 
+// Atualiza a hora a cada 1 minuto
+setInterval(mostrarHoraLocal, 60000);
+
+// Busca previsão do tempo pela API OpenWeather
 function obterPrevisaoDoTempo(lat, lon) {
-  const API_KEY = "SUA_CHAVE_OPENWEATHER"; // ⬅️ substitua aqui pela sua chave
+  const API_KEY = "b93c96ebf4fef0c26a0caaacdd063ee0"; // Substitua pela sua chave real
   const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&lang=pt_br&units=metric&appid=${API_KEY}`;
 
   fetch(url)
@@ -408,3 +406,9 @@ function obterPrevisaoDoTempo(lat, lon) {
       document.getElementById("tempo").textContent = "Erro ao obter clima.";
     });
 }
+
+// Atualiza clima a cada 10 minutos automaticamente
+setInterval(() => {
+  navigator.geolocation.getCurrentPosition(success, error);
+}, 600000); // 600.000 ms = 10 minutos
+
