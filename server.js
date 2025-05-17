@@ -77,3 +77,40 @@ app.use((req, res) => {
 app.listen(port, () => {
   console.log(`🚀 Servidor rodando na porta ${port}`);
 });
+let cachePostes = null;
+let cacheTimestamp = 0;
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutos
+
+app.get("/api/postes", async (req, res) => {
+  const now = Date.now();
+  if (cachePostes && now - cacheTimestamp < CACHE_TTL) {
+    return res.json(cachePostes);
+  }
+
+  try {
+    const results = await Promise.all(
+      Object.entries(pools).map(async ([cidade, pool]) => {
+        const { rows } = await pool.query(`
+          SELECT 
+            id_poste,
+            empresa,
+            resumo,
+            coordenadas,
+            nome_municipio
+          FROM dados_poste
+          WHERE coordenadas IS NOT NULL AND TRIM(coordenadas) <> ''
+        `);
+        return rows;
+      })
+    );
+
+    const todosPostes = results.flat();
+    cachePostes = todosPostes;
+    cacheTimestamp = now;
+
+    res.json(todosPostes);
+  } catch (err) {
+    console.error("Erro ao buscar dados:", err);
+    res.status(500).json({ error: "Erro no servidor" });
+  }
+});
