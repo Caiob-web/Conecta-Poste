@@ -35,9 +35,12 @@ fetch("/api/postes")
           lon,
         };
       }
-      agrupado[key].empresas.add(poste.empresa);
-    });
 
+      // ✅ Adiciona a empresa apenas se for diferente de "DISPONÍVEL"
+      if (poste.empresa && poste.empresa.toUpperCase() !== "DISPONÍVEL") {
+        agrupado[key].empresas.add(poste.empresa);
+      }
+    });
     Object.values(agrupado).forEach((poste) => {
       const empresasArray = [...poste.empresas];
       empresasArray.forEach((empresa) => {
@@ -398,8 +401,9 @@ function obterPrevisaoDoTempo(lat, lon) {
       const icone = data.weather[0].icon;
       const imgIcone = `<img src="https://openweathermap.org/img/wn/${icone}@2x.png" alt="${descricao}" />`;
 
-      document.getElementById("tempo").innerHTML =
-        `${imgIcone} ${descricao}, ${temp}°C<br>📍 ${cidade}`;
+      document.getElementById(
+        "tempo"
+      ).innerHTML = `${imgIcone} ${descricao}, ${temp}°C<br>📍 ${cidade}`;
     })
     .catch((err) => {
       console.error("Erro ao buscar clima:", err);
@@ -411,4 +415,3 @@ function obterPrevisaoDoTempo(lat, lon) {
 setInterval(() => {
   navigator.geolocation.getCurrentPosition(success, error);
 }, 600000); // 600.000 ms = 10 minutos
-
