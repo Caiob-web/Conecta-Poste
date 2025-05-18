@@ -60,7 +60,9 @@ fetch("/api/postes")
       const listaEmpresas = empresasArray.map((e) => `<li>${e}</li>`).join("");
       const marker = L.marker([poste.lat, poste.lon], { icon: icone });
       marker.bindPopup(
-        `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b><ul>${listaEmpresas}</ul>`
+        `<b>ID do Poste:</b> ${poste.id_poste}<br>
+   <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br>
+   <b>Empresas:</b><ul>${listaEmpresas}</ul>`
       );
       marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
         direction: "top",
@@ -95,13 +97,14 @@ function buscarID() {
     const listaEmpresas = resultado.empresas
       .map((e) => `<li>${e}</li>`)
       .join("");
-    L.popup()
-      .setLatLng([resultado.lat, resultado.lon])
-      .setContent(
-        `<b>ID:</b> ${resultado.id_poste}<br><b>Empresas:</b><ul>${listaEmpresas}</ul>`
-      )
-      .openOn(map);
-  } else {
+   L.popup()
+  .setLatLng([resultado.lat, resultado.lon])
+  .setContent(
+    `<b>ID do Poste:</b> ${resultado.id_poste}<br>
+     <b>Coordenadas:</b> ${resultado.lat.toFixed(6)}, ${resultado.lon.toFixed(6)}<br>
+     <b>Empresas:</b><ul>${listaEmpresas}</ul>`
+  )
+  .openOn(map);
     alert("Poste não encontrado.");
   }
 }
@@ -206,15 +209,10 @@ function filtrarEmpresa() {
     const listaEmpresas = poste.empresas.map((e) => `<li>${e}</li>`).join("");
     const marker = L.marker([poste.lat, poste.lon], { icon: icone });
     marker.bindPopup(
-      `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b><ul>${listaEmpresas}</ul>`
-    );
-    marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
-      direction: "top",
-    });
-    markers.addLayer(marker);
-  });
-}
-
+  `<b>ID do Poste:</b> ${poste.id_poste}<br>
+   <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br>
+   <b>Empresas:</b><ul>${listaEmpresas}</ul>`
+);
 function resetarMapa() {
   markers.clearLayers();
   todosPostes.forEach((poste) => {
@@ -227,16 +225,11 @@ function resetarMapa() {
       iconAnchor: [8, 8],
     });
     const listaEmpresas = poste.empresas.map((e) => `<li>${e}</li>`).join("");
-    const marker = L.marker([poste.lat, poste.lon], { icon: icone });
     marker.bindPopup(
-      `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b><ul>${listaEmpresas}</ul>`
-    );
-    marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
-      direction: "top",
-    });
-    markers.addLayer(marker);
-  });
-}
+  `<b>ID do Poste:</b> ${poste.id_poste}<br>
+   <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br>
+   <b>Empresas:</b><ul>${listaEmpresas}</ul>`
+);
 
 // Botão de esconder painel
 document.getElementById("togglePainel").addEventListener("click", () => {
