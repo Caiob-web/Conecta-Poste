@@ -97,18 +97,18 @@ function buscarID() {
     const listaEmpresas = resultado.empresas
       .map((e) => `<li>${e}</li>`)
       .join("");
-   L.popup()
-  .setLatLng([resultado.lat, resultado.lon])
-  .setContent(
-    `<b>ID do Poste:</b> ${resultado.id_poste}<br>
-     <b>Coordenadas:</b> ${resultado.lat.toFixed(6)}, ${resultado.lon.toFixed(6)}<br>
-     <b>Empresas:</b><ul>${listaEmpresas}</ul>`
-  )
-  .openOn(map);
+    L.popup()
+      .setLatLng([resultado.lat, resultado.lon])
+      .setContent(
+        `<b>ID do Poste:</b> ${resultado.id_poste}<br>
+         <b>Coordenadas:</b> ${resultado.lat.toFixed(6)}, ${resultado.lon.toFixed(6)}<br>
+         <b>Empresas:</b><ul>${listaEmpresas}</ul>`
+      )
+      .openOn(map);
+  } else {
     alert("Poste não encontrado.");
   }
 }
-
 function buscarCoordenada() {
   const coordInput = document.getElementById("busca-coord").value.trim();
   const partes = coordInput.split(",");
@@ -194,25 +194,37 @@ function filtrarEmpresa() {
     .value.trim()
     .toLowerCase();
   if (!termo) return;
+
   markers.clearLayers();
+
   todosPostes.forEach((poste) => {
     const empresasString = poste.empresas.join(", ").toLowerCase();
     if (!empresasString.includes(termo)) return;
+
     const qtdEmpresas = poste.empresas.length;
     const cor = qtdEmpresas >= 5 ? "red" : "green";
+
     const icone = L.divIcon({
       className: "",
       html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
       iconSize: [16, 16],
       iconAnchor: [8, 8],
     });
+
     const listaEmpresas = poste.empresas.map((e) => `<li>${e}</li>`).join("");
+
     const marker = L.marker([poste.lat, poste.lon], { icon: icone });
     marker.bindPopup(
-  `<b>ID do Poste:</b> ${poste.id_poste}<br>
-   <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br>
-   <b>Empresas:</b><ul>${listaEmpresas}</ul>`
-);
+      `<b>ID do Poste:</b> ${poste.id_poste}<br>
+       <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br>
+       <b>Empresas:</b><ul>${listaEmpresas}</ul>`
+    );
+    marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
+      direction: "top",
+    });
+    markers.addLayer(marker);
+  });
+}
 function resetarMapa() {
   markers.clearLayers();
   todosPostes.forEach((poste) => {
@@ -230,7 +242,6 @@ function resetarMapa() {
    <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br>
    <b>Empresas:</b><ul>${listaEmpresas}</ul>`
 );
-
 // Botão de esconder painel
 document.getElementById("togglePainel").addEventListener("click", () => {
   const painel = document.getElementById("painelBusca");
@@ -407,4 +418,4 @@ function obterPrevisaoDoTempo(lat, lon) {
 // Atualiza clima a cada 10 minutos automaticamente
 setInterval(() => {
   navigator.geolocation.getCurrentPosition(success, error);
-}, 600000); // 600.000 ms = 10 minutos
+}, 600000); // ✅ agora está correto
