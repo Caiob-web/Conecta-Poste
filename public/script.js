@@ -237,11 +237,19 @@ function resetarMapa() {
       iconAnchor: [8, 8],
     });
     const listaEmpresas = poste.empresas.map((e) => `<li>${e}</li>`).join("");
+    
+    const marker = L.marker([poste.lat, poste.lon], { icon: icone });
     marker.bindPopup(
-  `<b>ID do Poste:</b> ${poste.id_poste}<br>
-   <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br>
-   <b>Empresas:</b><ul>${listaEmpresas}</ul>`
-);
+      `<b>ID do Poste:</b> ${poste.id_poste}<br>
+       <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br>
+       <b>Empresas:</b><ul>${listaEmpresas}</ul>`
+    );
+    marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
+      direction: "top",
+    });
+    markers.addLayer(marker);
+  });
+}
 // Botão de esconder painel
 document.getElementById("togglePainel").addEventListener("click", () => {
   const painel = document.getElementById("painelBusca");
@@ -300,15 +308,12 @@ document
       console.error("Erro ao sugerir ruas:", erro);
     }
   });
-
 function buscarPorRua() {
   const rua = document.getElementById("busca-rua").value.trim();
   if (!rua) return alert("Digite um nome de rua.");
 
   fetch(
-    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-      rua
-    )}`
+    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(rua)}`
   )
     .then((res) => res.json())
     .then((data) => {
@@ -342,12 +347,12 @@ function buscarPorRua() {
           iconSize: [16, 16],
           iconAnchor: [8, 8],
         });
-        const listaEmpresas = poste.empresas
-          .map((e) => `<li>${e}</li>`)
-          .join("");
+        const listaEmpresas = poste.empresas.map((e) => `<li>${e}</li>`).join("");
         const marker = L.marker([poste.lat, poste.lon], { icon: icone });
         marker.bindPopup(
-          `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b><ul>${listaEmpresas}</ul>`
+          `<b>ID do Poste:</b> ${poste.id_poste}<br>
+           <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br>
+           <b>Empresas:</b><ul>${listaEmpresas}</ul>`
         );
         marker.bindTooltip(
           `ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`,
@@ -363,6 +368,7 @@ function buscarPorRua() {
       alert("Erro na busca de rua.");
     });
 }
+
 // Inicia busca por localização e exibe hora e clima
 navigator.geolocation.getCurrentPosition(success, error);
 
