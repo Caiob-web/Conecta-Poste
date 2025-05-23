@@ -452,7 +452,7 @@ function consultarIDsEmMassa() {
 
   encontrados.forEach((poste) => {
     const qtdEmpresas = poste.empresas.length;
-    const cor = qtdEmpresas === 0 ? "green" : "red";
+    const cor = qtdEmpresas >= 5 ? "red" : "green";
 
     const icone = L.divIcon({
       className: "",
