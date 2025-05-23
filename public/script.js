@@ -426,9 +426,9 @@ setInterval(() => {
   navigator.geolocation.getCurrentPosition(success, error);
 }, 600000); // ✅ agora está correto
 function consultarIDsEmMassa() {
-  const entrada = document.getElementById("ids-em-massa").value;
+  const entrada = document.getElementById("ids-multiplos").value;
   const ids = entrada
-    .split(/[\s,;]+/)
+    .split(/[\s,;]+/) // separa por vírgula, espaço ou quebra de linha
     .map((id) => id.trim())
     .filter((id) => id);
 
@@ -453,6 +453,7 @@ function consultarIDsEmMassa() {
   encontrados.forEach((poste) => {
     const qtdEmpresas = poste.empresas.length;
     const cor = qtdEmpresas === 0 ? "green" : "red";
+
     const icone = L.divIcon({
       className: "",
       html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
@@ -472,6 +473,7 @@ function consultarIDsEmMassa() {
       `ID: ${poste.id_poste} • ${qtdEmpresas === 0 ? "DISPONÍVEL" : `${qtdEmpresas} ocupações`}`,
       { direction: "top" }
     );
+
     markers.addLayer(marker);
     linhaCoords.push([poste.lat, poste.lon]);
   });
