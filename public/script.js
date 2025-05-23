@@ -425,3 +425,67 @@ function obterPrevisaoDoTempo(lat, lon) {
 setInterval(() => {
   navigator.geolocation.getCurrentPosition(success, error);
 }, 600000); // ✅ agora está correto
+function consultarIDsEmMassa() {
+  const entrada = document.getElementById("ids-em-massa").value;
+  const ids = entrada
+    .split(/[\s,;]+/)
+    .map((id) => id.trim())
+    .filter((id) => id);
+
+  if (!ids.length) return alert("Nenhum ID fornecido.");
+
+  markers.clearLayers();
+  if (window.tracadoMassivo) map.removeLayer(window.tracadoMassivo);
+
+  const encontrados = [];
+  const linhaCoords = [];
+
+  ids.forEach((id) => {
+    const poste = todosPostes.find((p) => p.id_poste.toString() === id);
+    if (poste) encontrados.push(poste);
+  });
+
+  if (!encontrados.length) {
+    alert("Nenhum poste encontrado com os IDs fornecidos.");
+    return;
+  }
+
+  encontrados.forEach((poste) => {
+    const qtdEmpresas = poste.empresas.length;
+    const cor = qtdEmpresas === 0 ? "green" : "red";
+    const icone = L.divIcon({
+      className: "",
+      html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
+      iconSize: [16, 16],
+      iconAnchor: [8, 8],
+    });
+
+    const listaEmpresas = poste.empresas.map((e) => `<li>${e}</li>`).join("");
+
+    const marker = L.marker([poste.lat, poste.lon], { icon: icone });
+    marker.bindPopup(
+      `<b>ID do Poste:</b> ${poste.id_poste}<br>
+       <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br>
+       <b>Empresas:</b><ul>${listaEmpresas}</ul>`
+    );
+    marker.bindTooltip(
+      `ID: ${poste.id_poste} • ${qtdEmpresas === 0 ? "DISPONÍVEL" : `${qtdEmpresas} ocupações`}`,
+      { direction: "top" }
+    );
+    markers.addLayer(marker);
+    linhaCoords.push([poste.lat, poste.lon]);
+  });
+
+  map.addLayer(markers);
+
+  if (linhaCoords.length >= 2) {
+    window.tracadoMassivo = L.polyline(linhaCoords, {
+      color: "blue",
+      weight: 3,
+      dashArray: "4,6",
+    }).addTo(map);
+    map.fitBounds(L.latLngBounds(linhaCoords));
+  } else {
+    map.setView([linhaCoords[0][0], linhaCoords[0][1]], 18);
+  }
+}
