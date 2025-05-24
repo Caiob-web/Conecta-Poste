@@ -428,7 +428,7 @@ setInterval(() => {
 function consultarIDsEmMassa() {
   const entrada = document.getElementById("ids-multiplos").value;
   const ids = entrada
-    .split(/[\s,;]+/) // separa por vírgula, espaço ou quebra de linha
+    .split(/[\s,;]+/)
     .map((id) => id.trim())
     .filter((id) => id);
 
@@ -436,6 +436,10 @@ function consultarIDsEmMassa() {
 
   markers.clearLayers();
   if (window.tracadoMassivo) map.removeLayer(window.tracadoMassivo);
+  if (window.intermediarios) {
+    window.intermediarios.forEach((m) => map.removeLayer(m));
+    window.intermediarios = [];
+  }
 
   const encontrados = [];
   const linhaCoords = [];
@@ -450,6 +454,7 @@ function consultarIDsEmMassa() {
     return;
   }
 
+  // Marca os postes do traçado
   encontrados.forEach((poste) => {
     const qtdEmpresas = poste.empresas.length;
     const cor = qtdEmpresas >= 5 ? "red" : "green";
@@ -462,7 +467,6 @@ function consultarIDsEmMassa() {
     });
 
     const listaEmpresas = poste.empresas.map((e) => `<li>${e}</li>`).join("");
-
     const marker = L.marker([poste.lat, poste.lon], { icon: icone });
     marker.bindPopup(
       `<b>ID do Poste:</b> ${poste.id_poste}<br>
@@ -470,13 +474,50 @@ function consultarIDsEmMassa() {
        <b>Empresas:</b><ul>${listaEmpresas}</ul>`
     );
     marker.bindTooltip(
-      `ID: ${poste.id_poste} • ${qtdEmpresas === 0 ? "DISPONÍVEL" : `${qtdEmpresas} ocupações`}`,
+      `ID: ${poste.id_poste} • ${
+        qtdEmpresas === 0 ? "DISPONÍVEL" : `${qtdEmpresas} ocupações`
+      }`,
       { direction: "top" }
     );
 
     markers.addLayer(marker);
     linhaCoords.push([poste.lat, poste.lon]);
   });
+
+  // 🔍 Verifica lacunas e marca postes esquecidos em amarelo
+  window.intermediarios = [];
+
+  for (let i = 0; i < encontrados.length - 1; i++) {
+    const a = encontrados[i];
+    const b = encontrados[i + 1];
+    const distAB = getDistanciaMetros(a.lat, a.lon, b.lat, b.lon);
+
+    if (distAB > 50) {
+      const esquecidos = todosPostes.filter((p) => {
+        if (!p.lat || !p.lon || ids.includes(p.id_poste.toString())) return false;
+
+        const distA = getDistanciaMetros(a.lat, a.lon, p.lat, p.lon);
+        const distB = getDistanciaMetros(b.lat, b.lon, p.lat, p.lon);
+
+        return distA + distB <= distAB + 20; // margem de 20m de tolerância
+      });
+
+      esquecidos.forEach((poste) => {
+        const marker = L.circleMarker([poste.lat, poste.lon], {
+          radius: 6,
+          color: "gold",
+          fillColor: "yellow",
+          fillOpacity: 0.8,
+        })
+          .bindPopup(
+            `<b>Poste Intermediário:</b><br>ID: ${poste.id_poste}<br><b>Coordenadas:</b><br>${poste.lat}, ${poste.lon}`
+          )
+          .addTo(map);
+
+        window.intermediarios.push(marker);
+      });
+    }
+  }
 
   map.addLayer(markers);
 
@@ -490,4 +531,18 @@ function consultarIDsEmMassa() {
   } else {
     map.setView([linhaCoords[0][0], linhaCoords[0][1]], 18);
   }
+}
+
+// 📏 Função para calcular a distância entre dois pontos (Haversine)
+function getDistanciaMetros(lat1, lon1, lat2, lon2) {
+  const R = 6371000; // Raio da Terra em metros
+  const toRad = (x) => (x * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
