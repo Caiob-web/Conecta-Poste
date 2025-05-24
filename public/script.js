@@ -558,42 +558,41 @@ function consultarIDsEmMassa() {
 
 // Geração de PDF com resumo e imagem
 function gerarPDFComMapa() {
+  if (!window.tracadoMassivo) {
+    return alert("Você precisa primeiro verificar múltiplos IDs e gerar um traçado.");
+  }
+
   leafletImage(map, function (err, canvas) {
+    if (err) {
+      alert("Erro ao capturar imagem do mapa.");
+      return;
+    }
+
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: "landscape" });
-
     const imgData = canvas.toDataURL("image/png");
+
     doc.addImage(imgData, "PNG", 10, 10, 270, 120);
 
-    const { total, disponiveis, ocupados, naoEncontrados, intermediarios } =
-      window.ultimoResumoPostes || {};
+    const resumo = window.ultimoResumoPostes || {
+      total: 0,
+      disponiveis: 0,
+      ocupados: 0,
+      naoEncontrados: [],
+      intermediarios: 0
+    };
+
     let y = 140;
     doc.setFontSize(12);
     doc.text(`Resumo da Verificação:`, 10, y);
-    doc.text(
-      `✔️ Postes Disponíveis (até 4 empresas): ${disponiveis || 0}`,
-      10,
-      y + 10
-    );
-    doc.text(
-      `❌ Postes Indisponíveis (5 ou mais empresas): ${ocupados || 0}`,
-      10,
-      y + 20
-    );
-    doc.text(
-      `⚠️ IDs não encontrados: ${(naoEncontrados || []).length}`,
-      10,
-      y + 30
-    );
-    doc.text(
-      `🟡 Postes intermediários (esquecidos): ${intermediarios || 0}`,
-      10,
-      y + 40
-    );
+    doc.text(`✔️ Postes Disponíveis (até 4 empresas): ${resumo.disponiveis}`, 10, y + 10);
+    doc.text(`❌ Postes Indisponíveis (5 ou mais empresas): ${resumo.ocupados}`, 10, y + 20);
+    doc.text(`⚠️ IDs não encontrados: ${resumo.naoEncontrados.length}`, 10, y + 30);
+    doc.text(`🟡 Postes intermediários (esquecidos): ${resumo.intermediarios}`, 10, y + 40);
 
-    if ((naoEncontrados || []).length > 0) {
+    if (resumo.naoEncontrados.length > 0) {
       doc.text(`IDs não encontrados (máx 50):`, 10, y + 55);
-      naoEncontrados.slice(0, 50).forEach((id, i) => {
+      resumo.naoEncontrados.slice(0, 50).forEach((id, i) => {
         doc.text(`- ${id}`, 15, y + 65 + i * 6);
       });
     }
@@ -601,7 +600,6 @@ function gerarPDFComMapa() {
     doc.save("tracado_postes.pdf");
   });
 }
-
 // Função para calcular distância em metros entre duas coordenadas
 function getDistanciaMetros(lat1, lon1, lat2, lon2) {
   const R = 6371000;
