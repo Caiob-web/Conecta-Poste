@@ -613,3 +613,24 @@ function getDistanciaMetros(lat1, lon1, lat2, lon2) {
     Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
+function limparTudo() {
+  // Limpa marcadores do traçado e intermediários
+  if (window.tracadoMassivo) {
+    map.removeLayer(window.tracadoMassivo);
+    window.tracadoMassivo = null;
+  }
+  if (window.intermediarios) {
+    window.intermediarios.forEach((m) => map.removeLayer(m));
+    window.intermediarios = [];
+  }
+
+  // Limpa os campos de filtro
+  document.getElementById("ids-multiplos").value = "";
+  document.getElementById("busca-id").value = "";
+  document.getElementById("busca-coord").value = "";
+  document.getElementById("filtro-empresa").value = "";
+  document.getElementById("busca-rua").value = "";
+
+  // Restaura todos os postes no mapa
+  resetarMapa();
+}
