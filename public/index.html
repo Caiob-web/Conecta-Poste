@@ -113,22 +113,24 @@
         rows="4"
         placeholder="Cole vários IDs de postes separados por vírgula ou quebra de linha"
       ></textarea>
+
       <button onclick="buscarID()">🔍 ID</button>
       <button onclick="buscarCoordenada()">📍 Coordenada</button>
       <button onclick="filtrarEmpresa()">🏢 Filtrar</button>
       <button onclick="buscarPorRua()">🏠 Rua</button>
       <button onclick="consultarIDsEmMassa()">
-      <button onclick="gerarPDFComMapa()">📄 Gerar PDF com Traçado</button>
-
         🔎 Verificar Múltiplos IDs
       </button>
+      <button onclick="gerarPDFComMapa()">📄 Gerar PDF com Traçado</button>
       <button onclick="resetarMapa()">🔄 Mostrar tudo</button>
     </div>
 
     <div class="legenda">
       <div class="legenda-item">
-         <div class="bolinha" style="background: yellow"></div>
-         Poste esquecido (intermediário)
+        <div class="bolinha" style="background: yellow"></div>
+        Poste esquecido (intermediário)
+      </div>
+      <div class="legenda-item">
         <div class="bolinha" style="background: green"></div>
         Até 5 empresas
       </div>
@@ -142,13 +144,13 @@
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
     <script src="script.js"></script>
-    
 
     <!-- Widget de clima -->
     <div id="widget-clima">
       <div id="hora">🕒 Carregando hora...</div>
       <div id="tempo">⛅ Carregando previsão do tempo...</div>
     </div>
+
     <style>
       #widget-clima {
         position: fixed;
@@ -171,6 +173,8 @@
         margin-right: 4px;
       }
     </style>
+
+    <!-- PDF + Mapa Image -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://unpkg.com/leaflet-image/leaflet-image.js"></script>
   </body>
