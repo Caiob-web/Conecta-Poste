@@ -14,6 +14,23 @@ markers.on("clusterclick", (a) => a.layer.spiderfy());
 
 const todosPostes = [];
 const empresasContagem = {};
+// Adiciona o controle do spinner de carregamento
+const spinner = document.getElementById("carregando");
+if (spinner) spinner.style.display = "block"; // mostra o spinner
+
+fetch("/api/postes")
+  .then((res) => res.json())
+  .then((data) => {
+    // ... (lógica que já existia)
+
+    // Esconde o spinner após carregar
+    if (spinner) spinner.style.display = "none";
+  })
+  .catch((err) => {
+    console.error("Aguarde o Carregamento do Aplicativo:", err);
+    if (spinner) spinner.style.display = "none";
+    alert("Aguarde o Carregamento do Aplicativo.");
+  });
 
 fetch("/api/postes")
   .then((res) => res.json())
