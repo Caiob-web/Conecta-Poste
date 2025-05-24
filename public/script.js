@@ -550,11 +550,15 @@ function gerarPDFComMapa() {
   if (!window.ultimoResumoPostes || !window.tracadoMassivo) {
     return alert("Você precisa primeiro verificar múltiplos IDs e gerar um traçado.");
   }
-window.ultimoResumoPostes = {
+  const { total, disponiveis, ocupados, naoEncontrados, intermediarios } = window.ultimoResumoPostes;
+  window.ultimoResumoPostes = {
   total: ids.length,
-  disponiveis: encontrados.filter(p => p.empresas.length <= 4).length,
-  ocupados: encontrados.filter(p => p.empresas.length >= 5).length,
-  naoEncontrados: ids.filter(id => !todosPostes.some(p => p.id_poste.toString() === id))
+  disponiveis: encontrados.filter((p) => p.empresas.length <= 4).length,
+  ocupados: encontrados.filter((p) => p.empresas.length >= 5).length,
+  naoEncontrados: ids.filter(
+    (id) => !todosPostes.some((p) => p.id_poste.toString() === id)
+  ),
+  intermediarios: (window.intermediarios || []).length
 };
   leafletImage(map, function (err, canvas) {
     const { jsPDF } = window.jspdf;
@@ -576,6 +580,7 @@ window.ultimoResumoPostes = {
 
     if (naoEncontrados.length > 0) {
       doc.text(`IDs não encontrados (máx 50):`, 10, y + 45);
+      doc.text(`🟡 Postes intermediários (esquecidos): ${intermediarios}`, 10, y + 40);
       naoEncontrados.slice(0, 50).forEach((id, i) => {
         doc.text(`- ${id}`, 15, y + 55 + i * 6);
       });
