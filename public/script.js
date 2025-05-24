@@ -576,8 +576,13 @@ function consultarIDsEmMassa() {
 // Geração de PDF com resumo e imagem
 function gerarPDFComMapa() {
   if (!window.tracadoMassivo) {
-    return alert("Você precisa primeiro verificar múltiplos IDs e gerar um traçado.");
+    return alert(
+      "Você precisa primeiro verificar múltiplos IDs e gerar um traçado."
+    );
   }
+
+  // ✅ Necessário para funcionar com jsPDF UMD
+  const { jsPDF } = window.jspdf;
 
   leafletImage(map, function (err, canvas) {
     if (err) {
@@ -585,7 +590,6 @@ function gerarPDFComMapa() {
       return;
     }
 
-    const { jsPDF } = window.jspdf; // ✅ MANTÉM APENAS UMA VEZ
     const doc = new jsPDF({ orientation: "landscape" });
     const imgData = canvas.toDataURL("image/png");
 
@@ -596,16 +600,32 @@ function gerarPDFComMapa() {
       disponiveis: 0,
       ocupados: 0,
       naoEncontrados: [],
-      intermediarios: 0
+      intermediarios: 0,
     };
 
     let y = 140;
     doc.setFontSize(12);
     doc.text(`Resumo da Verificação:`, 10, y);
-    doc.text(`✔️ Postes Disponíveis (até 4 empresas): ${resumo.disponiveis}`, 10, y + 10);
-    doc.text(`❌ Postes Indisponíveis (5 ou mais empresas): ${resumo.ocupados}`, 10, y + 20);
-    doc.text(`⚠️ IDs não encontrados: ${resumo.naoEncontrados.length}`, 10, y + 30);
-    doc.text(`🟡 Postes intermediários (esquecidos): ${resumo.intermediarios}`, 10, y + 40);
+    doc.text(
+      `✔️ Postes Disponíveis (até 4 empresas): ${resumo.disponiveis}`,
+      10,
+      y + 10
+    );
+    doc.text(
+      `❌ Postes Indisponíveis (5 ou mais empresas): ${resumo.ocupados}`,
+      10,
+      y + 20
+    );
+    doc.text(
+      `⚠️ IDs não encontrados: ${resumo.naoEncontrados.length}`,
+      10,
+      y + 30
+    );
+    doc.text(
+      `🟡 Postes intermediários (esquecidos): ${resumo.intermediarios}`,
+      10,
+      y + 40
+    );
 
     if (resumo.naoEncontrados.length > 0) {
       doc.text(`IDs não encontrados (máx 50):`, 10, y + 55);
