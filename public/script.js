@@ -433,23 +433,24 @@ function obterPrevisaoDoTempo(lat, lon) {
 setInterval(() => {
   navigator.geolocation.getCurrentPosition(success, error);
 }, 600000); // ✅ agora está correto
+// Função principal para consultar múltiplos IDs e traçar no mapa
 function consultarIDsEmMassa() {
   const entrada = document.getElementById("ids-multiplos").value;
   const ids = entrada
     .split(/[\s,;]+/)
     .map((id) => id.trim())
     .filter((id) => id);
-
   if (!ids.length) return alert("Nenhum ID fornecido.");
 
   markers.clearLayers();
-  if (window.tracadoMassivo) {
-    map.removeLayer(window.tracadoMassivo);
-    window.tracadoMassivo = null;
-  }
+  if (window.tracadoMassivo) map.removeLayer(window.tracadoMassivo);
   if (window.intermediarios) {
     window.intermediarios.forEach((m) => map.removeLayer(m));
     window.intermediarios = [];
+  }
+  if (window.numeroMarkers) {
+    window.numeroMarkers.forEach((m) => map.removeLayer(m));
+    window.numeroMarkers = [];
   }
 
   const encontrados = [];
@@ -460,36 +461,35 @@ function consultarIDsEmMassa() {
     if (poste) encontrados.push(poste);
   });
 
-  if (!encontrados.length) {
-    alert("Nenhum poste encontrado com os IDs fornecidos.");
-    return;
-  }
+  if (!encontrados.length)
+    return alert("Nenhum poste encontrado com os IDs fornecidos.");
 
-  // Marca os postes do traçado com numeração
-  encontrados.forEach((poste, index) => {
+  // Adiciona marcadores numerados para cada poste encontrado
+  window.numeroMarkers = [];
+
+  encontrados.forEach((poste, i) => {
     const qtdEmpresas = poste.empresas.length;
     const cor = qtdEmpresas >= 5 ? "red" : "green";
 
     const icone = L.divIcon({
       className: "",
-      html: `<div style="width:24px;height:24px;border-radius:50%;background:${cor};border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:12px;color:white;">${
-        index + 1
+      html: `<div style="background:${cor};color:white;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;border:2px solid white;">${
+        i + 1
       }</div>`,
-      iconSize: [24, 24],
-      iconAnchor: [12, 12],
     });
 
     const listaEmpresas = poste.empresas.map((e) => `<li>${e}</li>`).join("");
+
     const marker = L.marker([poste.lat, poste.lon], { icon: icone });
     marker.bindPopup(
-      `<b>${index + 1}º Poste</b><br><b>ID:</b> ${
+      `<b>ID do Poste:</b> ${
         poste.id_poste
       }<br><b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(
         6
       )}<br><b>Empresas:</b><ul>${listaEmpresas}</ul>`
     );
     marker.bindTooltip(
-      `${index + 1}º • ID: ${poste.id_poste} • ${
+      `ID: ${poste.id_poste} • ${
         qtdEmpresas === 0 ? "DISPONÍVEL" : `${qtdEmpresas} ocupações`
       }`,
       { direction: "top" }
@@ -497,9 +497,10 @@ function consultarIDsEmMassa() {
 
     markers.addLayer(marker);
     linhaCoords.push([poste.lat, poste.lon]);
+    window.numeroMarkers.push(marker);
   });
 
-  // Verifica lacunas e marca postes intermediários
+  // Postes esquecidos (intermediários)
   window.intermediarios = [];
 
   for (let i = 0; i < encontrados.length - 1; i++) {
@@ -511,10 +512,8 @@ function consultarIDsEmMassa() {
       const esquecidos = todosPostes.filter((p) => {
         if (!p.lat || !p.lon || ids.includes(p.id_poste.toString()))
           return false;
-
         const distA = getDistanciaMetros(a.lat, a.lon, p.lat, p.lon);
         const distB = getDistanciaMetros(b.lat, b.lon, p.lat, p.lon);
-
         return distA + distB <= distAB + 20;
       });
 
@@ -529,34 +528,10 @@ function consultarIDsEmMassa() {
             `<b>Poste Intermediário:</b><br>ID: ${poste.id_poste}<br><b>Coordenadas:</b><br>${poste.lat}, ${poste.lon}`
           )
           .addTo(map);
-
         window.intermediarios.push(marker);
       });
     }
   }
-
-  map.addLayer(markers);
-
-  if (linhaCoords.length >= 2) {
-    window.tracadoMassivo = L.polyline(linhaCoords, {
-      color: "blue",
-      weight: 3,
-      dashArray: "4,6",
-    }).addTo(map);
-    map.fitBounds(L.latLngBounds(linhaCoords));
-  } else {
-    map.setView([linhaCoords[0][0], linhaCoords[0][1]], 18);
-  }
-
-  window.ultimoResumoPostes = {
-    total: ids.length,
-    disponiveis: encontrados.filter((p) => p.empresas.length <= 4).length,
-    ocupados: encontrados.filter((p) => p.empresas.length >= 5).length,
-    naoEncontrados: ids.filter(
-      (id) => !todosPostes.some((p) => p.id_poste.toString() === id)
-    ),
-    intermediarios: (window.intermediarios || []).length,
-  };
 
   map.addLayer(markers);
   if (linhaCoords.length >= 2) {
@@ -581,46 +556,42 @@ function consultarIDsEmMassa() {
   };
 }
 
+// Geração de PDF com resumo e imagem
 function gerarPDFComMapa() {
-  if (!window.ultimoResumoPostes || !window.tracadoMassivo) {
-    return alert(
-      "Você precisa primeiro verificar múltiplos IDs e gerar um traçado."
-    );
-  }
-
   leafletImage(map, function (err, canvas) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: "landscape" });
 
     const imgData = canvas.toDataURL("image/png");
-
-    // Adiciona o mapa
     doc.addImage(imgData, "PNG", 10, 10, 270, 120);
 
     const { total, disponiveis, ocupados, naoEncontrados, intermediarios } =
-      window.ultimoResumoPostes;
-
+      window.ultimoResumoPostes || {};
     let y = 140;
     doc.setFontSize(12);
     doc.text(`Resumo da Verificação:`, 10, y);
     doc.text(
-      `✔️ Postes Disponíveis (até 4 empresas): ${disponiveis}`,
+      `✔️ Postes Disponíveis (até 4 empresas): ${disponiveis || 0}`,
       10,
       y + 10
     );
     doc.text(
-      `❌ Postes Indisponíveis (5 ou mais empresas): ${ocupados}`,
+      `❌ Postes Indisponíveis (5 ou mais empresas): ${ocupados || 0}`,
       10,
       y + 20
     );
-    doc.text(`⚠️ IDs não encontrados: ${naoEncontrados.length}`, 10, y + 30);
     doc.text(
-      `🟡 Postes intermediários (esquecidos): ${intermediarios}`,
+      `⚠️ IDs não encontrados: ${(naoEncontrados || []).length}`,
+      10,
+      y + 30
+    );
+    doc.text(
+      `🟡 Postes intermediários (esquecidos): ${intermediarios || 0}`,
       10,
       y + 40
     );
 
-    if (naoEncontrados.length > 0) {
+    if ((naoEncontrados || []).length > 0) {
       doc.text(`IDs não encontrados (máx 50):`, 10, y + 55);
       naoEncontrados.slice(0, 50).forEach((id, i) => {
         doc.text(`- ${id}`, 15, y + 65 + i * 6);
@@ -629,4 +600,16 @@ function gerarPDFComMapa() {
 
     doc.save("tracado_postes.pdf");
   });
+}
+
+// Função para calcular distância em metros entre duas coordenadas
+function getDistanciaMetros(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const toRad = (x) => (x * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
