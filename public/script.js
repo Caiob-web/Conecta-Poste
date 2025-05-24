@@ -427,11 +427,7 @@ setInterval(() => {
 }, 600000); // ✅ agora está correto
 function consultarIDsEmMassa() {
   const entrada = document.getElementById("ids-multiplos").value;
-  const ids = entrada
-    .split(/[\s,;]+/)
-    .map((id) => id.trim())
-    .filter((id) => id);
-
+  const ids = entrada.split(/[\s,;]+/).map((id) => id.trim()).filter((id) => id);
   if (!ids.length) return alert("Nenhum ID fornecido.");
 
   markers.clearLayers();
@@ -454,73 +450,48 @@ function consultarIDsEmMassa() {
     return;
   }
 
-  // Marca os postes do traçado
   encontrados.forEach((poste) => {
     const qtdEmpresas = poste.empresas.length;
     const cor = qtdEmpresas >= 5 ? "red" : "green";
-
     const icone = L.divIcon({
       className: "",
       html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
       iconSize: [16, 16],
       iconAnchor: [8, 8],
     });
-
     const listaEmpresas = poste.empresas.map((e) => `<li>${e}</li>`).join("");
     const marker = L.marker([poste.lat, poste.lon], { icon: icone });
-    marker.bindPopup(
-      `<b>ID do Poste:</b> ${poste.id_poste}<br>
-       <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br>
-       <b>Empresas:</b><ul>${listaEmpresas}</ul>`
-    );
-    marker.bindTooltip(
-      `ID: ${poste.id_poste} • ${
-        qtdEmpresas === 0 ? "DISPONÍVEL" : `${qtdEmpresas} ocupações`
-      }`,
-      { direction: "top" }
-    );
-
+    marker.bindPopup(`<b>ID do Poste:</b> ${poste.id_poste}<br><b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br><b>Empresas:</b><ul>${listaEmpresas}</ul>`);
+    marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas === 0 ? "DISPONÍVEL" : `${qtdEmpresas} ocupações`}`, { direction: "top" });
     markers.addLayer(marker);
     linhaCoords.push([poste.lat, poste.lon]);
   });
 
-  // 🔍 Verifica lacunas e marca postes esquecidos em amarelo
   window.intermediarios = [];
-
   for (let i = 0; i < encontrados.length - 1; i++) {
     const a = encontrados[i];
     const b = encontrados[i + 1];
     const distAB = getDistanciaMetros(a.lat, a.lon, b.lat, b.lon);
-
     if (distAB > 50) {
       const esquecidos = todosPostes.filter((p) => {
         if (!p.lat || !p.lon || ids.includes(p.id_poste.toString())) return false;
-
         const distA = getDistanciaMetros(a.lat, a.lon, p.lat, p.lon);
         const distB = getDistanciaMetros(b.lat, b.lon, p.lat, p.lon);
-
-        return distA + distB <= distAB + 20; // margem de 20m de tolerância
+        return distA + distB <= distAB + 20;
       });
-
       esquecidos.forEach((poste) => {
         const marker = L.circleMarker([poste.lat, poste.lon], {
           radius: 6,
           color: "gold",
           fillColor: "yellow",
           fillOpacity: 0.8,
-        })
-          .bindPopup(
-            `<b>Poste Intermediário:</b><br>ID: ${poste.id_poste}<br><b>Coordenadas:</b><br>${poste.lat}, ${poste.lon}`
-          )
-          .addTo(map);
-
+        }).bindPopup(`<b>Poste Intermediário:</b><br>ID: ${poste.id_poste}<br><b>Coordenadas:</b><br>${poste.lat}, ${poste.lon}`).addTo(map);
         window.intermediarios.push(marker);
       });
     }
   }
 
   map.addLayer(markers);
-
   if (linhaCoords.length >= 2) {
     window.tracadoMassivo = L.polyline(linhaCoords, {
       color: "blue",
@@ -531,45 +502,28 @@ function consultarIDsEmMassa() {
   } else {
     map.setView([linhaCoords[0][0], linhaCoords[0][1]], 18);
   }
+
+  window.ultimoResumoPostes = {
+    total: ids.length,
+    disponiveis: encontrados.filter((p) => p.empresas.length <= 4).length,
+    ocupados: encontrados.filter((p) => p.empresas.length >= 5).length,
+    naoEncontrados: ids.filter(id => !todosPostes.some(p => p.id_poste.toString() === id)),
+    intermediarios: (window.intermediarios || []).length,
+  };
 }
 
-// 📏 Função para calcular a distância entre dois pontos (Haversine)
-function getDistanciaMetros(lat1, lon1, lat2, lon2) {
-  const R = 6371000; // Raio da Terra em metros
-  const toRad = (x) => (x * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) *
-      Math.cos(toRad(lat2)) *
-      Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 function gerarPDFComMapa() {
   if (!window.ultimoResumoPostes || !window.tracadoMassivo) {
     return alert("Você precisa primeiro verificar múltiplos IDs e gerar um traçado.");
   }
-  const { total, disponiveis, ocupados, naoEncontrados, intermediarios } = window.ultimoResumoPostes;
-  window.ultimoResumoPostes = {
-  total: ids.length,
-  disponiveis: encontrados.filter((p) => p.empresas.length <= 4).length,
-  ocupados: encontrados.filter((p) => p.empresas.length >= 5).length,
-  naoEncontrados: ids.filter(
-    (id) => !todosPostes.some((p) => p.id_poste.toString() === id)
-  ),
-  intermediarios: (window.intermediarios || []).length
-};
   leafletImage(map, function (err, canvas) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: "landscape" });
 
     const imgData = canvas.toDataURL("image/png");
-
-    // Adiciona o mapa
     doc.addImage(imgData, "PNG", 10, 10, 270, 120);
 
-    const { total, disponiveis, ocupados, naoEncontrados } = window.ultimoResumoPostes;
+    const { total, disponiveis, ocupados, naoEncontrados, intermediarios } = window.ultimoResumoPostes;
 
     let y = 140;
     doc.setFontSize(12);
@@ -577,15 +531,24 @@ function gerarPDFComMapa() {
     doc.text(`✔️ Postes Disponíveis (até 4 empresas): ${disponiveis}`, 10, y + 10);
     doc.text(`❌ Postes Indisponíveis (5 ou mais empresas): ${ocupados}`, 10, y + 20);
     doc.text(`⚠️ IDs não encontrados: ${naoEncontrados.length}`, 10, y + 30);
+    doc.text(`🟡 Postes intermediários (esquecidos): ${intermediarios}`, 10, y + 40);
 
     if (naoEncontrados.length > 0) {
-      doc.text(`IDs não encontrados (máx 50):`, 10, y + 45);
-      doc.text(`🟡 Postes intermediários (esquecidos): ${intermediarios}`, 10, y + 40);
+      doc.text(`IDs não encontrados (máx 50):`, 10, y + 55);
       naoEncontrados.slice(0, 50).forEach((id, i) => {
-        doc.text(`- ${id}`, 15, y + 55 + i * 6);
+        doc.text(`- ${id}`, 15, y + 65 + i * 6);
       });
     }
 
-    doc.save("traçado_postes.pdf");
+    doc.save("tracado_postes.pdf");
   });
+}
+
+function getDistanciaMetros(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const toRad = (x) => (x * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
