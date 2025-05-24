@@ -118,6 +118,8 @@
       <button onclick="filtrarEmpresa()">🏢 Filtrar</button>
       <button onclick="buscarPorRua()">🏠 Rua</button>
       <button onclick="consultarIDsEmMassa()">
+      <button onclick="gerarPDFComMapa()">📄 Gerar PDF com Traçado</button>
+
         🔎 Verificar Múltiplos IDs
       </button>
       <button onclick="resetarMapa()">🔄 Mostrar tudo</button>
@@ -140,6 +142,7 @@
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
     <script src="script.js"></script>
+    
 
     <!-- Widget de clima -->
     <div id="widget-clima">
@@ -168,5 +171,7 @@
         margin-right: 4px;
       }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/leaflet-image/leaflet-image.js"></script>
   </body>
 </html>

@@ -546,3 +546,41 @@ function getDistanciaMetros(lat1, lon1, lat2, lon2) {
       Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
+function gerarPDFComMapa() {
+  if (!window.ultimoResumoPostes || !window.tracadoMassivo) {
+    return alert("Você precisa primeiro verificar múltiplos IDs e gerar um traçado.");
+  }
+window.ultimoResumoPostes = {
+  total: ids.length,
+  disponiveis: encontrados.filter(p => p.empresas.length <= 4).length,
+  ocupados: encontrados.filter(p => p.empresas.length >= 5).length,
+  naoEncontrados: ids.filter(id => !todosPostes.some(p => p.id_poste.toString() === id))
+};
+  leafletImage(map, function (err, canvas) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: "landscape" });
+
+    const imgData = canvas.toDataURL("image/png");
+
+    // Adiciona o mapa
+    doc.addImage(imgData, "PNG", 10, 10, 270, 120);
+
+    const { total, disponiveis, ocupados, naoEncontrados } = window.ultimoResumoPostes;
+
+    let y = 140;
+    doc.setFontSize(12);
+    doc.text(`Resumo da Verificação:`, 10, y);
+    doc.text(`✔️ Postes Disponíveis (até 4 empresas): ${disponiveis}`, 10, y + 10);
+    doc.text(`❌ Postes Indisponíveis (5 ou mais empresas): ${ocupados}`, 10, y + 20);
+    doc.text(`⚠️ IDs não encontrados: ${naoEncontrados.length}`, 10, y + 30);
+
+    if (naoEncontrados.length > 0) {
+      doc.text(`IDs não encontrados (máx 50):`, 10, y + 45);
+      naoEncontrados.slice(0, 50).forEach((id, i) => {
+        doc.text(`- ${id}`, 15, y + 55 + i * 6);
+      });
+    }
+
+    doc.save("traçado_postes.pdf");
+  });
+}
