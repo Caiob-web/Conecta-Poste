@@ -65,7 +65,6 @@ fetch(`${API_URL}/api/postes`)
       });
 
       const listaEmpresas = empresasArray.map((e) => `<li>${e}</li>`).join("");
-
       const marker = L.marker([poste.lat, poste.lon], { icon: icone });
       marker.bindPopup(
         `<b>ID do Poste:</b> ${poste.id_poste}<br>
@@ -89,41 +88,6 @@ fetch(`${API_URL}/api/postes`)
     if (spinner) spinner.style.display = "none";
     alert("Erro ao carregar os dados dos postes.");
   });
-    Object.values(agrupado).forEach((poste) => {
-      const empresasArray = [...poste.empresas];
-      empresasArray.forEach((empresa) => {
-        empresasContagem[empresa] = (empresasContagem[empresa] || 0) + 1;
-      });
-
-      const qtdEmpresas = empresasArray.length;
-      const cor = qtdEmpresas >= 5 ? "red" : "green";
-
-      const icone = L.divIcon({
-        className: "",
-        html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
-        iconSize: [16, 16],
-        iconAnchor: [8, 8],
-      });
-
-      const listaEmpresas = empresasArray.map((e) => `<li>${e}</li>`).join("");
-      const marker = L.marker([poste.lat, poste.lon], { icon: icone });
-      marker.bindPopup(
-        `<b>ID do Poste:</b> ${poste.id_poste}<br>
-   <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br>
-   <b>Empresas:</b><ul>${listaEmpresas}</ul>`
-      );
-      marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
-        direction: "top",
-      });
-
-      markers.addLayer(marker);
-      todosPostes.push({ ...poste, empresas: empresasArray });
-    });
-
-    map.addLayer(markers);
-    preencherAutocomplete();
-  });
-
 function preencherAutocomplete() {
   const lista = document.getElementById("lista-empresas");
   lista.innerHTML = "";
@@ -363,9 +327,7 @@ function buscarPorRua() {
   if (!rua) return alert("Digite um nome de rua.");
 
   fetch(
-    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-      rua
-    )}`
+    `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(rua)}`
   )
     .then((res) => res.json())
     .then((data) => {
@@ -375,15 +337,15 @@ function buscarPorRua() {
       }
 
       const { lat, lon } = data[0];
+      const raioEmMetros = 120;
 
       const encontrados = todosPostes.filter((p) => {
         if (!p.lat || !p.lon) return false;
-        const dx = p.lat - lat;
-        const dy = p.lon - lon;
-        return Math.sqrt(dx * dx + dy * dy) < 0.001; // ~100m de raio
+        const dist = getDistanciaMetros(p.lat, p.lon, parseFloat(lat), parseFloat(lon));
+        return dist <= raioEmMetros;
       });
 
-      if (encontrados.length === 0) {
+      if (!encontrados.length) {
         alert("Nenhum poste encontrado próximo à rua informada.");
         return;
       }
@@ -399,31 +361,28 @@ function buscarPorRua() {
           iconSize: [16, 16],
           iconAnchor: [8, 8],
         });
-        const listaEmpresas = poste.empresas
-          .map((e) => `<li>${e}</li>`)
-          .join("");
+
+        const listaEmpresas = poste.empresas.map((e) => `<li>${e}</li>`).join("");
         const marker = L.marker([poste.lat, poste.lon], { icon: icone });
         marker.bindPopup(
           `<b>ID do Poste:</b> ${poste.id_poste}<br>
-           <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(
-            6
-          )}<br>
+           <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br>
            <b>Empresas:</b><ul>${listaEmpresas}</ul>`
         );
-        marker.bindTooltip(
-          `ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`,
-          { direction: "top" }
-        );
+        marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
+          direction: "top",
+        });
         markers.addLayer(marker);
       });
 
-      map.setView([lat, lon], 16);
+      map.setView([parseFloat(lat), parseFloat(lon)], 16);
     })
     .catch((err) => {
       console.error("Erro ao buscar rua:", err);
       alert("Erro na busca de rua.");
     });
 }
+
 
 // Inicia busca por localização e exibe hora e clima
 navigator.geolocation.getCurrentPosition(success, error);
