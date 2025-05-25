@@ -585,7 +585,7 @@ function gerarPDFComMapa() {
       return;
     }
 
-    const { jsPDF } = window.jspdf; // ✅ MANTÉM APENAS UMA VEZ
+    const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: "landscape" });
     const imgData = canvas.toDataURL("image/png");
 
