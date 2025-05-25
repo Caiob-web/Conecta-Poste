@@ -9,37 +9,27 @@ const markers = L.markerClusterGroup({
   maxClusterRadius: 60,
   disableClusteringAtZoom: 17,
 });
-
 markers.on("clusterclick", (a) => a.layer.spiderfy());
 
+const API_URL = "https://mapa-de-postes-back.glitch.me";
 const todosPostes = [];
 const empresasContagem = {};
-// Adiciona o controle do spinner de carregamento
+
+// Spinner de carregamento
 const spinner = document.getElementById("carregando");
-if (spinner) spinner.style.display = "block"; // mostra o spinner
+if (spinner) spinner.style.display = "block";
 
-fetch("/api/postes")
-  .then((res) => res.json())
-  .then((data) => {
-    // ... (lógica que já existia)
-
-    // Esconde o spinner após carregar
-    if (spinner) spinner.style.display = "none";
-  })
-  .catch((err) => {
-    console.error("Aguarde o Carregamento do Aplicativo:", err);
-    if (spinner) spinner.style.display = "none";
-    alert("Aguarde o Carregamento do Aplicativo.");
-  });
-
-fetch("/api/postes")
+// Carrega os postes da API
+fetch(`${API_URL}/api/postes`)
   .then((res) => res.json())
   .then((data) => {
     const agrupado = {};
+
     data.forEach((poste) => {
       if (!poste.coordenadas) return;
       const [lat, lon] = poste.coordenadas.split(",").map(Number);
       if (isNaN(lat) || isNaN(lon)) return;
+
       const key = poste.id_poste;
       if (!agrupado[key]) {
         agrupado[key] = {
@@ -53,11 +43,52 @@ fetch("/api/postes")
         };
       }
 
-      // ✅ Adiciona a empresa apenas se for diferente de "DISPONÍVEL"
       if (poste.empresa && poste.empresa.toUpperCase() !== "DISPONÍVEL") {
         agrupado[key].empresas.add(poste.empresa);
       }
     });
+
+    Object.values(agrupado).forEach((poste) => {
+      const empresasArray = [...poste.empresas];
+      empresasArray.forEach((empresa) => {
+        empresasContagem[empresa] = (empresasContagem[empresa] || 0) + 1;
+      });
+
+      const qtdEmpresas = empresasArray.length;
+      const cor = qtdEmpresas >= 5 ? "red" : "green";
+
+      const icone = L.divIcon({
+        className: "",
+        html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
+      });
+
+      const listaEmpresas = empresasArray.map((e) => `<li>${e}</li>`).join("");
+
+      const marker = L.marker([poste.lat, poste.lon], { icon: icone });
+      marker.bindPopup(
+        `<b>ID do Poste:</b> ${poste.id_poste}<br>
+         <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br>
+         <b>Empresas:</b><ul>${listaEmpresas}</ul>`
+      );
+      marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
+        direction: "top",
+      });
+
+      markers.addLayer(marker);
+      todosPostes.push({ ...poste, empresas: empresasArray });
+    });
+
+    map.addLayer(markers);
+    preencherAutocomplete();
+    if (spinner) spinner.style.display = "none";
+  })
+  .catch((err) => {
+    console.error("Erro ao carregar postes:", err);
+    if (spinner) spinner.style.display = "none";
+    alert("Erro ao carregar os dados dos postes.");
+  });
     Object.values(agrupado).forEach((poste) => {
       const empresasArray = [...poste.empresas];
       empresasArray.forEach((empresa) => {
