@@ -88,6 +88,7 @@ fetch(`${API_URL}/api/postes`)
     if (spinner) spinner.style.display = "none";
     alert("Erro ao carregar os dados dos postes.");
   });
+
 function preencherAutocomplete() {
   const lista = document.getElementById("lista-empresas");
   lista.innerHTML = "";
@@ -123,6 +124,7 @@ function buscarID() {
     alert("Poste não encontrado.");
   }
 }
+
 function buscarCoordenada() {
   const coordInput = document.getElementById("busca-coord").value.trim();
   const partes = coordInput.split(",");
@@ -138,164 +140,6 @@ function buscarCoordenada() {
     .openOn(map);
 }
 
-function buscarPorRua() {
-  const rua = document.getElementById("busca-rua").value.trim();
-  if (!rua) return alert("Digite um nome de rua.");
-
-  const apiKey = "AIzaSyAGrt7qjnB52KoEmi3tKvOer9fmQ_vMY9Q";
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
-    rua
-  )}&key=${apiKey}`;
-
-  fetch(url)
-    .then((res) => res.json())
-    .then((data) => {
-      if (!data.results || !data.results.length) {
-        alert("Endereço não encontrado.");
-        return;
-      }
-
-      const { lat, lng } = data.results[0].geometry.location;
-
-      const encontrados = todosPostes.filter((p) => {
-        if (!p.lat || !p.lon) return false;
-        const dx = p.lat - lat;
-        const dy = p.lon - lng;
-        return Math.sqrt(dx * dx + dy * dy) < 0.001; // ~100m de raio
-      });
-
-      if (encontrados.length === 0) {
-        alert("Nenhum poste encontrado próximo à rua informada.");
-        return;
-      }
-
-      markers.clearLayers();
-
-      encontrados.forEach((poste) => {
-        const qtdEmpresas = poste.empresas.length;
-        const cor = qtdEmpresas >= 5 ? "red" : "green";
-        const icone = L.divIcon({
-          className: "",
-          html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
-          iconSize: [16, 16],
-          iconAnchor: [8, 8],
-        });
-        const listaEmpresas = poste.empresas
-          .map((e) => `<li>${e}</li>`)
-          .join("");
-        const marker = L.marker([poste.lat, poste.lon], { icon: icone });
-        marker.bindPopup(
-          `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b><ul>${listaEmpresas}</ul>`
-        );
-        marker.bindTooltip(
-          `ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`,
-          { direction: "top" }
-        );
-        markers.addLayer(marker);
-      });
-
-      map.setView([lat, lng], 16);
-    })
-    .catch((err) => {
-      console.error("Erro na busca por rua:", err);
-      alert("Erro ao buscar rua no Google Maps.");
-    });
-}
-
-function filtrarEmpresa() {
-  const termo = document
-    .getElementById("filtro-empresa")
-    .value.trim()
-    .toLowerCase();
-  if (!termo) return;
-
-  markers.clearLayers();
-
-  todosPostes.forEach((poste) => {
-    const empresasString = poste.empresas.join(", ").toLowerCase();
-    if (!empresasString.includes(termo)) return;
-
-    const qtdEmpresas = poste.empresas.length;
-    const cor = qtdEmpresas >= 5 ? "red" : "green";
-
-    const icone = L.divIcon({
-      className: "",
-      html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
-      iconSize: [16, 16],
-      iconAnchor: [8, 8],
-    });
-
-    const listaEmpresas = poste.empresas.map((e) => `<li>${e}</li>`).join("");
-
-    const marker = L.marker([poste.lat, poste.lon], { icon: icone });
-    marker.bindPopup(
-      `<b>ID do Poste:</b> ${poste.id_poste}<br>
-       <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br>
-       <b>Empresas:</b><ul>${listaEmpresas}</ul>`
-    );
-    marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
-      direction: "top",
-    });
-    markers.addLayer(marker);
-  });
-}
-function resetarMapa() {
-  markers.clearLayers();
-  todosPostes.forEach((poste) => {
-    const qtdEmpresas = poste.empresas.length;
-    const cor = qtdEmpresas >= 5 ? "red" : "green";
-    const icone = L.divIcon({
-      className: "",
-      html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
-      iconSize: [16, 16],
-      iconAnchor: [8, 8],
-    });
-    const listaEmpresas = poste.empresas.map((e) => `<li>${e}</li>`).join("");
-
-    const marker = L.marker([poste.lat, poste.lon], { icon: icone });
-    marker.bindPopup(
-      `<b>ID do Poste:</b> ${poste.id_poste}<br>
-       <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br>
-       <b>Empresas:</b><ul>${listaEmpresas}</ul>`
-    );
-    marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
-      direction: "top",
-    });
-    markers.addLayer(marker);
-  });
-}
-// Botão de esconder painel
-document.getElementById("togglePainel").addEventListener("click", () => {
-  const painel = document.getElementById("painelBusca");
-  if (painel.style.display === "none") {
-    painel.style.display = "block";
-    document.getElementById("togglePainel").textContent = "🙈 Esconder Painel";
-  } else {
-    painel.style.display = "none";
-    document.getElementById("togglePainel").textContent = "👁️ Mostrar Painel";
-  }
-});
-
-// Botão de localização
-document.getElementById("localizacaoUsuario").addEventListener("click", () => {
-  if (!navigator.geolocation) {
-    alert("Geolocalização não suportada pelo navegador.");
-    return;
-  }
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const { latitude, longitude } = pos.coords;
-      map.setView([latitude, longitude], 17);
-      L.marker([latitude, longitude])
-        .addTo(map)
-        .bindPopup("📍 Você está aqui!")
-        .openPopup();
-    },
-    (err) => {
-      alert("Erro ao buscar localização: " + err.message);
-    }
-  );
-});
 document
   .getElementById("busca-rua")
   .addEventListener("input", async function () {
@@ -322,6 +166,7 @@ document
       console.error("Erro ao sugerir ruas:", erro);
     }
   });
+
 function buscarPorRua() {
   const rua = document.getElementById("busca-rua").value.trim();
   if (!rua) return alert("Digite um nome de rua.");
@@ -383,14 +228,110 @@ function buscarPorRua() {
     });
 }
 
+function filtrarEmpresa() {
+  const termo = document
+    .getElementById("filtro-empresa")
+    .value.trim()
+    .toLowerCase();
+  if (!termo) return;
 
-// Inicia busca por localização e exibe hora e clima
+  markers.clearLayers();
+
+  todosPostes.forEach((poste) => {
+    const empresasString = poste.empresas.join(", ").toLowerCase();
+    if (!empresasString.includes(termo)) return;
+
+    const qtdEmpresas = poste.empresas.length;
+    const cor = qtdEmpresas >= 5 ? "red" : "green";
+
+    const icone = L.divIcon({
+      className: "",
+      html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
+      iconSize: [16, 16],
+      iconAnchor: [8, 8],
+    });
+
+    const listaEmpresas = poste.empresas.map((e) => `<li>${e}</li>`).join("");
+
+    const marker = L.marker([poste.lat, poste.lon], { icon: icone });
+    marker.bindPopup(
+      `<b>ID do Poste:</b> ${poste.id_poste}<br>
+       <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br>
+       <b>Empresas:</b><ul>${listaEmpresas}</ul>`
+    );
+    marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
+      direction: "top",
+    });
+    markers.addLayer(marker);
+  });
+}
+
+function resetarMapa() {
+  markers.clearLayers();
+  todosPostes.forEach((poste) => {
+    const qtdEmpresas = poste.empresas.length;
+    const cor = qtdEmpresas >= 5 ? "red" : "green";
+    const icone = L.divIcon({
+      className: "",
+      html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
+      iconSize: [16, 16],
+      iconAnchor: [8, 8],
+    });
+    const listaEmpresas = poste.empresas.map((e) => `<li>${e}</li>`).join("");
+
+    const marker = L.marker([poste.lat, poste.lon], { icon: icone });
+    marker.bindPopup(
+      `<b>ID do Poste:</b> ${poste.id_poste}<br>
+       <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br>
+       <b>Empresas:</b><ul>${listaEmpresas}</ul>`
+    );
+    marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
+      direction: "top",
+    });
+    markers.addLayer(marker);
+  });
+}
+
+// Botão de esconder painel
+document.getElementById("togglePainel").addEventListener("click", () => {
+  const painel = document.getElementById("painelBusca");
+  if (painel.style.display === "none") {
+    painel.style.display = "block";
+    document.getElementById("togglePainel").textContent = "🙈 Esconder Painel";
+  } else {
+    painel.style.display = "none";
+    document.getElementById("togglePainel").textContent = "👁️ Mostrar Painel";
+  }
+});
+
+// Botão de localização
+document.getElementById("localizacaoUsuario").addEventListener("click", () => {
+  if (!navigator.geolocation) {
+    alert("Geolocalização não suportada pelo navegador.");
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const { latitude, longitude } = pos.coords;
+      map.setView([latitude, longitude], 17);
+      L.marker([latitude, longitude])
+        .addTo(map)
+        .bindPopup("📍 Você está aqui!")
+        .openPopup();
+    },
+    (err) => {
+      alert("Erro ao buscar localização: " + err.message);
+    }
+  );
+});
+
+// --- CLIMA E HORA ---
+
 navigator.geolocation.getCurrentPosition(success, error);
 
 function success(position) {
   const latitude = position.coords.latitude;
   const longitude = position.coords.longitude;
-
   obterPrevisaoDoTempo(latitude, longitude);
   mostrarHoraLocal();
 }
@@ -399,7 +340,6 @@ function error(err) {
   console.error("Erro ao obter localização:", err);
 }
 
-// Exibe a hora local do dispositivo
 function mostrarHoraLocal() {
   const now = new Date();
   const hora = now.toLocaleTimeString("pt-BR", {
@@ -408,11 +348,8 @@ function mostrarHoraLocal() {
   });
   document.getElementById("hora").textContent = `🕒 ${hora}`;
 }
-
-// Atualiza a hora a cada 1 minuto
 setInterval(mostrarHoraLocal, 60000);
 
-// Busca previsão do tempo pela API OpenWeather
 function obterPrevisaoDoTempo(lat, lon) {
   const API_KEY = "b93c96ebf4fef0c26a0caaacdd063ee0"; // Substitua pela sua chave real
   const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&lang=pt_br&units=metric&appid=${API_KEY}`;
@@ -435,12 +372,12 @@ function obterPrevisaoDoTempo(lat, lon) {
       document.getElementById("tempo").textContent = "Erro ao obter clima.";
     });
 }
-
-// Atualiza clima a cada 10 minutos automaticamente
 setInterval(() => {
   navigator.geolocation.getCurrentPosition(success, error);
-}, 600000); // ✅ agora está correto
-// Função principal para consultar múltiplos IDs e traçar no mapa
+}, 600000); // Atualiza clima a cada 10 min
+
+// --- CONSULTA EM MASSA E PDF ---
+
 function consultarIDsEmMassa() {
   const entrada = document.getElementById("ids-multiplos").value;
   const ids = entrada
@@ -573,7 +510,6 @@ function gerarPDFComMapa() {
 
   // ✅ Necessário para funcionar com jsPDF UMD
   const { jsPDF } = window.jspdf;
-
   leafletImage(map, function (err, canvas) {
     if (err) {
       alert("Erro ao capturar imagem do mapa.");
@@ -627,6 +563,7 @@ function gerarPDFComMapa() {
     doc.save("tracado_postes.pdf");
   });
 }
+
 // Função para calcular distância em metros entre duas coordenadas
 function getDistanciaMetros(lat1, lon1, lat2, lon2) {
   const R = 6371000;
@@ -638,8 +575,8 @@ function getDistanciaMetros(lat1, lon1, lat2, lon2) {
     Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
+
 function limparTudo() {
-  // Limpa marcadores do traçado e intermediários
   if (window.tracadoMassivo) {
     map.removeLayer(window.tracadoMassivo);
     window.tracadoMassivo = null;
@@ -649,13 +586,11 @@ function limparTudo() {
     window.intermediarios = [];
   }
 
-  // Limpa os campos de filtro
   document.getElementById("ids-multiplos").value = "";
   document.getElementById("busca-id").value = "";
   document.getElementById("busca-coord").value = "";
   document.getElementById("filtro-empresa").value = "";
   document.getElementById("busca-rua").value = "";
 
-  // Restaura todos os postes no mapa
   resetarMapa();
 }
