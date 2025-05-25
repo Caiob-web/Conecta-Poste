@@ -82,57 +82,6 @@ app.get("/api/postes", async (req, res) => {
   }
 });
 
-// 🔎 Consulta por múltiplos IDs de postes em todas as cidades
-app.get("/api/postes-multiplos", async (req, res) => {
-  const idsParam = req.query.ids;
-  if (!idsParam) {
-    return res.status(400).json({ error: "Envie o parâmetro 'ids'" });
-  }
-
-  // Suporta vírgula ou quebra de linha
-  const ids = idsParam
-    .split(/[\n,]+/)
-    .map((id) => id.trim())
-    .filter(Boolean);
-
-  if (ids.length === 0) {
-    return res.status(400).json({ error: "Nenhum ID fornecido" });
-  }
-
-  try {
-    // Consulta cada banco separadamente (paralelo)
-    const results = await Promise.all(
-      Object.entries(pools).map(async ([cidade, pool]) => {
-        const { rows } = await pool.query(
-          `SELECT 
-            id_poste,
-            empresa,
-            resumo,
-            coordenadas,
-            nome_municipio
-           FROM dados_poste
-           WHERE id_poste = ANY($1)`,
-          [ids]
-        );
-        return rows;
-      })
-    );
-    const postesEncontrados = results.flat();
-
-    res.json({
-      encontrados: postesEncontrados,
-      ids_consultados: ids,
-      ids_nao_encontrados: ids.filter(
-        (id) =>
-          !postesEncontrados.find((p) => String(p.id_poste) === String(id))
-      ),
-    });
-  } catch (err) {
-    console.error("Erro na busca de múltiplos IDs:", err);
-    res.status(500).json({ error: "Erro ao consultar múltiplos IDs" });
-  }
-});
-
 // 404 padrão
 app.use((req, res) => {
   res.status(404).send("Rota não encontrada");

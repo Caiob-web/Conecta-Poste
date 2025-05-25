@@ -9,27 +9,37 @@ const markers = L.markerClusterGroup({
   maxClusterRadius: 60,
   disableClusteringAtZoom: 17,
 });
+
 markers.on("clusterclick", (a) => a.layer.spiderfy());
 
-const API_URL = "https://mapa-de-postes-back.glitch.me";
 const todosPostes = [];
 const empresasContagem = {};
-
-// Spinner de carregamento
+// Adiciona o controle do spinner de carregamento
 const spinner = document.getElementById("carregando");
-if (spinner) spinner.style.display = "block";
+if (spinner) spinner.style.display = "block"; // mostra o spinner
 
-// Carrega os postes da API
-fetch(`${API_URL}/api/postes`)
+fetch("/api/postes")
+  .then((res) => res.json())
+  .then((data) => {
+    // ... (lógica que já existia)
+
+    // Esconde o spinner após carregar
+    if (spinner) spinner.style.display = "none";
+  })
+  .catch((err) => {
+    console.error("Aguarde o Carregamento do Aplicativo:", err);
+    if (spinner) spinner.style.display = "none";
+    alert("Aguarde o Carregamento do Aplicativo.");
+  });
+
+fetch("/api/postes")
   .then((res) => res.json())
   .then((data) => {
     const agrupado = {};
-
     data.forEach((poste) => {
       if (!poste.coordenadas) return;
       const [lat, lon] = poste.coordenadas.split(",").map(Number);
       if (isNaN(lat) || isNaN(lon)) return;
-
       const key = poste.id_poste;
       if (!agrupado[key]) {
         agrupado[key] = {
@@ -43,11 +53,11 @@ fetch(`${API_URL}/api/postes`)
         };
       }
 
+      // ✅ Adiciona a empresa apenas se for diferente de "DISPONÍVEL"
       if (poste.empresa && poste.empresa.toUpperCase() !== "DISPONÍVEL") {
         agrupado[key].empresas.add(poste.empresa);
       }
     });
-
     Object.values(agrupado).forEach((poste) => {
       const empresasArray = [...poste.empresas];
       empresasArray.forEach((empresa) => {
@@ -68,8 +78,8 @@ fetch(`${API_URL}/api/postes`)
       const marker = L.marker([poste.lat, poste.lon], { icon: icone });
       marker.bindPopup(
         `<b>ID do Poste:</b> ${poste.id_poste}<br>
-         <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br>
-         <b>Empresas:</b><ul>${listaEmpresas}</ul>`
+   <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br>
+   <b>Empresas:</b><ul>${listaEmpresas}</ul>`
       );
       marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
         direction: "top",
@@ -81,12 +91,6 @@ fetch(`${API_URL}/api/postes`)
 
     map.addLayer(markers);
     preencherAutocomplete();
-    if (spinner) spinner.style.display = "none";
-  })
-  .catch((err) => {
-    console.error("Erro ao carregar postes:", err);
-    if (spinner) spinner.style.display = "none";
-    alert("Erro ao carregar os dados dos postes.");
   });
 
 function preencherAutocomplete() {
@@ -124,7 +128,6 @@ function buscarID() {
     alert("Poste não encontrado.");
   }
 }
-
 function buscarCoordenada() {
   const coordInput = document.getElementById("busca-coord").value.trim();
   const partes = coordInput.split(",");
@@ -140,57 +143,33 @@ function buscarCoordenada() {
     .openOn(map);
 }
 
-document
-  .getElementById("busca-rua")
-  .addEventListener("input", async function () {
-    const termo = this.value.trim();
-    if (termo.length < 4) return;
-
-    try {
-      const resposta = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-          termo
-        )}`
-      );
-      const resultados = await resposta.json();
-
-      const datalist = document.getElementById("sugestoes-rua");
-      datalist.innerHTML = "";
-
-      resultados.forEach((item) => {
-        const option = document.createElement("option");
-        option.value = item.display_name;
-        datalist.appendChild(option);
-      });
-    } catch (erro) {
-      console.error("Erro ao sugerir ruas:", erro);
-    }
-  });
-
 function buscarPorRua() {
   const rua = document.getElementById("busca-rua").value.trim();
   if (!rua) return alert("Digite um nome de rua.");
 
-  fetch(
-    `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(rua)}`
-  )
+  const apiKey = "AIzaSyAGrt7qjnB52KoEmi3tKvOer9fmQ_vMY9Q";
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
+    rua
+  )}&key=${apiKey}`;
+
+  fetch(url)
     .then((res) => res.json())
     .then((data) => {
-      if (!data.length) {
+      if (!data.results || !data.results.length) {
         alert("Endereço não encontrado.");
         return;
       }
 
-      const { lat, lon } = data[0];
-      const raioEmMetros = 120;
+      const { lat, lng } = data.results[0].geometry.location;
 
       const encontrados = todosPostes.filter((p) => {
         if (!p.lat || !p.lon) return false;
-        const dist = getDistanciaMetros(p.lat, p.lon, parseFloat(lat), parseFloat(lon));
-        return dist <= raioEmMetros;
+        const dx = p.lat - lat;
+        const dy = p.lon - lng;
+        return Math.sqrt(dx * dx + dy * dy) < 0.001; // ~100m de raio
       });
 
-      if (!encontrados.length) {
+      if (encontrados.length === 0) {
         alert("Nenhum poste encontrado próximo à rua informada.");
         return;
       }
@@ -206,25 +185,25 @@ function buscarPorRua() {
           iconSize: [16, 16],
           iconAnchor: [8, 8],
         });
-
-        const listaEmpresas = poste.empresas.map((e) => `<li>${e}</li>`).join("");
+        const listaEmpresas = poste.empresas
+          .map((e) => `<li>${e}</li>`)
+          .join("");
         const marker = L.marker([poste.lat, poste.lon], { icon: icone });
         marker.bindPopup(
-          `<b>ID do Poste:</b> ${poste.id_poste}<br>
-           <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br>
-           <b>Empresas:</b><ul>${listaEmpresas}</ul>`
+          `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Empresas:</b><ul>${listaEmpresas}</ul>`
         );
-        marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
-          direction: "top",
-        });
+        marker.bindTooltip(
+          `ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`,
+          { direction: "top" }
+        );
         markers.addLayer(marker);
       });
 
-      map.setView([parseFloat(lat), parseFloat(lon)], 16);
+      map.setView([lat, lng], 16);
     })
     .catch((err) => {
-      console.error("Erro ao buscar rua:", err);
-      alert("Erro na busca de rua.");
+      console.error("Erro na busca por rua:", err);
+      alert("Erro ao buscar rua no Google Maps.");
     });
 }
 
@@ -265,7 +244,6 @@ function filtrarEmpresa() {
     markers.addLayer(marker);
   });
 }
-
 function resetarMapa() {
   markers.clearLayers();
   todosPostes.forEach((poste) => {
@@ -291,7 +269,6 @@ function resetarMapa() {
     markers.addLayer(marker);
   });
 }
-
 // Botão de esconder painel
 document.getElementById("togglePainel").addEventListener("click", () => {
   const painel = document.getElementById("painelBusca");
@@ -324,14 +301,106 @@ document.getElementById("localizacaoUsuario").addEventListener("click", () => {
     }
   );
 });
+document
+  .getElementById("busca-rua")
+  .addEventListener("input", async function () {
+    const termo = this.value.trim();
+    if (termo.length < 4) return;
 
-// --- CLIMA E HORA ---
+    try {
+      const resposta = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          termo
+        )}`
+      );
+      const resultados = await resposta.json();
 
+      const datalist = document.getElementById("sugestoes-rua");
+      datalist.innerHTML = "";
+
+      resultados.forEach((item) => {
+        const option = document.createElement("option");
+        option.value = item.display_name;
+        datalist.appendChild(option);
+      });
+    } catch (erro) {
+      console.error("Erro ao sugerir ruas:", erro);
+    }
+  });
+function buscarPorRua() {
+  const rua = document.getElementById("busca-rua").value.trim();
+  if (!rua) return alert("Digite um nome de rua.");
+
+  fetch(
+    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+      rua
+    )}`
+  )
+    .then((res) => res.json())
+    .then((data) => {
+      if (!data.length) {
+        alert("Endereço não encontrado.");
+        return;
+      }
+
+      const { lat, lon } = data[0];
+
+      const encontrados = todosPostes.filter((p) => {
+        if (!p.lat || !p.lon) return false;
+        const dx = p.lat - lat;
+        const dy = p.lon - lon;
+        return Math.sqrt(dx * dx + dy * dy) < 0.001; // ~100m de raio
+      });
+
+      if (encontrados.length === 0) {
+        alert("Nenhum poste encontrado próximo à rua informada.");
+        return;
+      }
+
+      markers.clearLayers();
+
+      encontrados.forEach((poste) => {
+        const qtdEmpresas = poste.empresas.length;
+        const cor = qtdEmpresas >= 5 ? "red" : "green";
+        const icone = L.divIcon({
+          className: "",
+          html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
+        });
+        const listaEmpresas = poste.empresas
+          .map((e) => `<li>${e}</li>`)
+          .join("");
+        const marker = L.marker([poste.lat, poste.lon], { icon: icone });
+        marker.bindPopup(
+          `<b>ID do Poste:</b> ${poste.id_poste}<br>
+           <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(
+            6
+          )}<br>
+           <b>Empresas:</b><ul>${listaEmpresas}</ul>`
+        );
+        marker.bindTooltip(
+          `ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`,
+          { direction: "top" }
+        );
+        markers.addLayer(marker);
+      });
+
+      map.setView([lat, lon], 16);
+    })
+    .catch((err) => {
+      console.error("Erro ao buscar rua:", err);
+      alert("Erro na busca de rua.");
+    });
+}
+
+// Inicia busca por localização e exibe hora e clima
 navigator.geolocation.getCurrentPosition(success, error);
 
 function success(position) {
   const latitude = position.coords.latitude;
   const longitude = position.coords.longitude;
+
   obterPrevisaoDoTempo(latitude, longitude);
   mostrarHoraLocal();
 }
@@ -340,6 +409,7 @@ function error(err) {
   console.error("Erro ao obter localização:", err);
 }
 
+// Exibe a hora local do dispositivo
 function mostrarHoraLocal() {
   const now = new Date();
   const hora = now.toLocaleTimeString("pt-BR", {
@@ -348,8 +418,11 @@ function mostrarHoraLocal() {
   });
   document.getElementById("hora").textContent = `🕒 ${hora}`;
 }
+
+// Atualiza a hora a cada 1 minuto
 setInterval(mostrarHoraLocal, 60000);
 
+// Busca previsão do tempo pela API OpenWeather
 function obterPrevisaoDoTempo(lat, lon) {
   const API_KEY = "b93c96ebf4fef0c26a0caaacdd063ee0"; // Substitua pela sua chave real
   const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&lang=pt_br&units=metric&appid=${API_KEY}`;
@@ -372,12 +445,12 @@ function obterPrevisaoDoTempo(lat, lon) {
       document.getElementById("tempo").textContent = "Erro ao obter clima.";
     });
 }
+
+// Atualiza clima a cada 10 minutos automaticamente
 setInterval(() => {
   navigator.geolocation.getCurrentPosition(success, error);
-}, 600000); // Atualiza clima a cada 10 min
-
-// --- CONSULTA EM MASSA E PDF ---
-
+}, 600000); // ✅ agora está correto
+// Função principal para consultar múltiplos IDs e traçar no mapa
 function consultarIDsEmMassa() {
   const entrada = document.getElementById("ids-multiplos").value;
   const ids = entrada
@@ -503,19 +576,16 @@ function consultarIDsEmMassa() {
 // Geração de PDF com resumo e imagem
 function gerarPDFComMapa() {
   if (!window.tracadoMassivo) {
-    return alert(
-      "Você precisa primeiro verificar múltiplos IDs e gerar um traçado."
-    );
+    return alert("Você precisa primeiro verificar múltiplos IDs e gerar um traçado.");
   }
 
-  // ✅ Necessário para funcionar com jsPDF UMD
-  const { jsPDF } = window.jspdf;
   leafletImage(map, function (err, canvas) {
     if (err) {
       alert("Erro ao capturar imagem do mapa.");
       return;
     }
 
+    const { jsPDF } = window.jspdf; // ✅ MANTÉM APENAS UMA VEZ
     const doc = new jsPDF({ orientation: "landscape" });
     const imgData = canvas.toDataURL("image/png");
 
@@ -526,32 +596,16 @@ function gerarPDFComMapa() {
       disponiveis: 0,
       ocupados: 0,
       naoEncontrados: [],
-      intermediarios: 0,
+      intermediarios: 0
     };
 
     let y = 140;
     doc.setFontSize(12);
     doc.text(`Resumo da Verificação:`, 10, y);
-    doc.text(
-      `✔️ Postes Disponíveis (até 4 empresas): ${resumo.disponiveis}`,
-      10,
-      y + 10
-    );
-    doc.text(
-      `❌ Postes Indisponíveis (5 ou mais empresas): ${resumo.ocupados}`,
-      10,
-      y + 20
-    );
-    doc.text(
-      `⚠️ IDs não encontrados: ${resumo.naoEncontrados.length}`,
-      10,
-      y + 30
-    );
-    doc.text(
-      `🟡 Postes intermediários (esquecidos): ${resumo.intermediarios}`,
-      10,
-      y + 40
-    );
+    doc.text(`✔️ Postes Disponíveis (até 4 empresas): ${resumo.disponiveis}`, 10, y + 10);
+    doc.text(`❌ Postes Indisponíveis (5 ou mais empresas): ${resumo.ocupados}`, 10, y + 20);
+    doc.text(`⚠️ IDs não encontrados: ${resumo.naoEncontrados.length}`, 10, y + 30);
+    doc.text(`🟡 Postes intermediários (esquecidos): ${resumo.intermediarios}`, 10, y + 40);
 
     if (resumo.naoEncontrados.length > 0) {
       doc.text(`IDs não encontrados (máx 50):`, 10, y + 55);
@@ -563,7 +617,6 @@ function gerarPDFComMapa() {
     doc.save("tracado_postes.pdf");
   });
 }
-
 // Função para calcular distância em metros entre duas coordenadas
 function getDistanciaMetros(lat1, lon1, lat2, lon2) {
   const R = 6371000;
@@ -575,8 +628,8 @@ function getDistanciaMetros(lat1, lon1, lat2, lon2) {
     Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
-
 function limparTudo() {
+  // Limpa marcadores do traçado e intermediários
   if (window.tracadoMassivo) {
     map.removeLayer(window.tracadoMassivo);
     window.tracadoMassivo = null;
@@ -586,11 +639,13 @@ function limparTudo() {
     window.intermediarios = [];
   }
 
+  // Limpa os campos de filtro
   document.getElementById("ids-multiplos").value = "";
   document.getElementById("busca-id").value = "";
   document.getElementById("busca-coord").value = "";
   document.getElementById("filtro-empresa").value = "";
   document.getElementById("busca-rua").value = "";
 
+  // Restaura todos os postes no mapa
   resetarMapa();
 }
