@@ -5,7 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mapa de Postes</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"
+    />
     <style>
       html,
       body {
@@ -19,7 +22,8 @@
       }
       .painel-busca {
         position: absolute;
-        top: 10px;
+        /* desloquei de 10px para 100px */
+        top: 100px;
         right: 10px;
         z-index: 1000;
         background: white;
@@ -138,16 +142,40 @@
   </head>
   <body>
     <button id="togglePainel" class="botao-topo">🙈 Esconder Painel</button>
-    <button id="localizacaoUsuario" class="botao-topo">📍 Minha Localização</button>
+    <button id="localizacaoUsuario" class="botao-topo">
+      📍 Minha Localização
+    </button>
 
     <div class="painel-busca" id="painelBusca">
-      <input type="text" id="busca-id" placeholder="Buscar por ID do poste" />
-      <input type="text" id="busca-coord" placeholder="Latitude,Longitude" />
-      <input type="text" id="busca-rua" placeholder="Buscar por rua" list="sugestoes-rua" />
+      <input
+        type="text"
+        id="busca-id"
+        placeholder="Buscar por ID do poste"
+      />
+      <input
+        type="text"
+        id="busca-coord"
+        placeholder="Latitude,Longitude"
+      />
+      <input
+        type="text"
+        id="busca-rua"
+        placeholder="Buscar por rua"
+        list="sugestoes-rua"
+      />
       <datalist id="sugestoes-rua"></datalist>
-      <input type="text" id="filtro-empresa" list="lista-empresas" placeholder="Filtrar por empresa" />
+      <input
+        type="text"
+        id="filtro-empresa"
+        list="lista-empresas"
+        placeholder="Filtrar por empresa"
+      />
       <datalist id="lista-empresas"></datalist>
-      <textarea id="ids-multiplos" rows="3" placeholder="Cole vários IDs separados por vírgula ou quebra de linha"></textarea>
+      <textarea
+        id="ids-multiplos"
+        rows="3"
+        placeholder="Cole vários IDs separados por vírgula ou quebra de linha"
+      ></textarea>
 
       <div style="display: flex; flex-wrap: wrap">
         <button onclick="buscarID()">🔍 ID</button>
@@ -177,6 +205,7 @@
     </div>
 
     <div id="map"></div>
+
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
     <script src="script.js"></script>
