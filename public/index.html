@@ -4,10 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mapa de Postes</title>
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet/dist/leaflet.css"
-    />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"
@@ -138,17 +135,13 @@
         font-size: 16px;
       }
       @keyframes girar {
-        0% {
-          transform: rotate(0deg);
-        }
-        100% {
-          transform: rotate(360deg);
-        }
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
       }
     </style>
   </head>
   <body>
-    <!-- Botões no topo: esconder painel e Minha Localização -->
+    <!-- Botões no topo: esconder painel e “minha localização” -->
     <button id="togglePainel" class="botao-topo">🙈 Esconder Painel</button>
     <button id="localizacaoUsuario" class="botao-topo">
       📍 Minha Localização
@@ -156,8 +149,16 @@
 
     <!-- Painel de busca / filtros / relatórios -->
     <div class="painel-busca" id="painelBusca">
-      <input type="text" id="busca-id" placeholder="Buscar por ID do poste" />
-      <input type="text" id="busca-coord" placeholder="Latitude,Longitude" />
+      <input
+        type="text"
+        id="busca-id"
+        placeholder="Buscar por ID do poste"
+      />
+      <input
+        type="text"
+        id="busca-coord"
+        placeholder="Latitude,Longitude"
+      />
       <input
         type="text"
         id="busca-rua"
@@ -185,8 +186,8 @@
         <button onclick="filtrarEmpresa()">🏢 Filtrar</button>
         <button onclick="buscarPorRua()">🏠 Rua</button>
         <button onclick="consultarIDsEmMassa()">🔎 Verificar IDs</button>
+        <!-- Botão Gerar Excel (adicionado) -->
         <button id="btnGerarExcel">📊 Excel</button>
-        <button id="btnGerarImagem">📷 Imagem</button>
         <button onclick="limparTudo()">🧹 Limpar</button>
         <button onclick="gerarPDFComMapa()">📄 PDF</button>
         <button onclick="resetarMapa()">🔄 Tudo</button>
@@ -215,6 +216,7 @@
     <!-- Scripts necessários -->
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+    <!-- Seu script principal -->
     <script src="script.js"></script>
 
     <!-- Widget de hora e clima no canto inferior direito -->

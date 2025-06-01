@@ -1,5 +1,5 @@
 // =====================================================================
-//  script.js completo com todas as funções + “Gerar Excel” e “Gerar Imagem”
+//  script.js completo com todas as funções + “Gerar Excel”
 // =====================================================================
 
 // Inicializa o mapa
@@ -249,8 +249,10 @@ function filtrarEmpresa() {
     const marker = L.marker([poste.lat, poste.lon], { icon: icone });
     marker.bindPopup(
       `<b>ID do Poste:</b> ${poste.id_poste}<br>
-       <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br>
-       <b>Empresas:</b><ul>${listaEmpresas}</ul>`
+         <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(
+        6
+      )}<br>
+         <b>Empresas:</b><ul>${listaEmpresas}</ul>`
     );
     marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
       direction: "top",
@@ -275,8 +277,10 @@ function resetarMapa() {
     const marker = L.marker([poste.lat, poste.lon], { icon: icone });
     marker.bindPopup(
       `<b>ID do Poste:</b> ${poste.id_poste}<br>
-       <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br>
-       <b>Empresas:</b><ul>${listaEmpresas}</ul>`
+         <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(
+        6
+      )}<br>
+         <b>Empresas:</b><ul>${listaEmpresas}</ul>`
     );
     marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
       direction: "top",
@@ -471,7 +475,6 @@ setInterval(() => {
 }, 600000); // ✅ agora está correto
 
 // Função principal para consultar múltiplos IDs e traçar no mapa
-// (com renderer: L.canvas() para garantir que o traçado e os circleMarkers sejam capturados)
 function consultarIDsEmMassa() {
   const entrada = document.getElementById("ids-multiplos").value;
   const ids = entrada
@@ -538,9 +541,7 @@ function consultarIDsEmMassa() {
     window.numeroMarkers.push(marker);
   });
 
-  map.addLayer(markers);
-
-  // Desenha postes intermediários (circleMarkers) e traçado pontilhado em Canvas
+  // Postes intermediários (esquecidos)
   window.intermediarios = [];
 
   for (let i = 0; i < encontrados.length - 1; i++) {
@@ -558,18 +559,14 @@ function consultarIDsEmMassa() {
       });
 
       esquecidos.forEach((poste) => {
-        // circleMarker em Canvas para aparecer na imagem
         const marker = L.circleMarker([poste.lat, poste.lon], {
-          renderer: L.canvas(), // força renderização em Canvas
           radius: 6,
           color: "gold",
           fillColor: "yellow",
           fillOpacity: 0.8,
         })
           .bindPopup(
-            `<b>Poste Intermediário:</b><br>ID: ${poste.id_poste}<br><b>Coordenadas:</b><br>${poste.lat.toFixed(
-              6
-            )}, ${poste.lon.toFixed(6)}`
+            `<b>Poste Intermediário:</b><br>ID: ${poste.id_poste}<br><b>Coordenadas:</b><br>${poste.lat}, ${poste.lon}`
           )
           .addTo(map);
         window.intermediarios.push(marker);
@@ -577,10 +574,9 @@ function consultarIDsEmMassa() {
     }
   }
 
+  map.addLayer(markers);
   if (linhaCoords.length >= 2) {
-    // Desenha o traçado pontilhado em Canvas
     window.tracadoMassivo = L.polyline(linhaCoords, {
-      renderer: L.canvas(), // força renderização em Canvas
       color: "blue",
       weight: 3,
       dashArray: "4,6",
@@ -754,32 +750,4 @@ document.getElementById("btnGerarExcel").addEventListener("click", () => {
         "Ocorreu um erro ao gerar o Excel. Verifique o console para mais detalhes."
       );
     });
-});
-
-// =====================================================================
-//  BOTÃO “Gerar Imagem” (PNG do mapa com traçado e marcadores)
-// =====================================================================
-document.getElementById("btnGerarImagem").addEventListener("click", () => {
-  leafletImage(map, function(err, canvas) {
-    if (err) {
-      console.error("Erro ao capturar o mapa como imagem:", err);
-      alert("Ocorreu um erro ao gerar a imagem. Veja o console para detalhes.");
-      return;
-    }
-
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        alert("Falha ao criar o blob da imagem.");
-        return;
-      }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "mapa_postes.png";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    }, "image/png");
-  });
 });
