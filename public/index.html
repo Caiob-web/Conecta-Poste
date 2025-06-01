@@ -135,8 +135,12 @@
         font-size: 16px;
       }
       @keyframes girar {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
       }
     </style>
   </head>
@@ -149,16 +153,8 @@
 
     <!-- Painel de busca / filtros / relatórios -->
     <div class="painel-busca" id="painelBusca">
-      <input
-        type="text"
-        id="busca-id"
-        placeholder="Buscar por ID do poste"
-      />
-      <input
-        type="text"
-        id="busca-coord"
-        placeholder="Latitude,Longitude"
-      />
+      <input type="text" id="busca-id" placeholder="Buscar por ID do poste" />
+      <input type="text" id="busca-coord" placeholder="Latitude,Longitude" />
       <input
         type="text"
         id="busca-rua"
@@ -185,9 +181,11 @@
         <button onclick="buscarCoordenada()">📍 Coordenada</button>
         <button onclick="filtrarEmpresa()">🏢 Filtrar</button>
         <button onclick="buscarPorRua()">🏠 Rua</button>
+
         <button onclick="consultarIDsEmMassa()">🔎 Verificar IDs</button>
         <!-- Botão Gerar Excel (adicionado) -->
         <button id="btnGerarExcel">📊 Excel</button>
+        <button id="btnGerarImagem">📷 Imagem</button>
         <button onclick="limparTudo()">🧹 Limpar</button>
         <button onclick="gerarPDFComMapa()">📄 PDF</button>
         <button onclick="resetarMapa()">🔄 Tudo</button>

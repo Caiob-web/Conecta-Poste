@@ -751,3 +751,38 @@ document.getElementById("btnGerarExcel").addEventListener("click", () => {
       );
     });
 });
+// =====================================================================
+//  BOTÃO “Gerar Imagem” (PNG do mapa com traçado e marcadores)
+// =====================================================================
+document.getElementById("btnGerarImagem").addEventListener("click", () => {
+  // 1) Verifica se há alguma coisa para capturar (por exemplo, 
+  //    se você quiser exigir que o usuário tenha clicado em “Verificar IDs” antes)
+  //    Aqui vamos capturar qualquer situação do mapa, mesmo sem traçado.
+  
+  // 2) Usa o leafletImage para obter um Canvas com a renderização do mapa
+  leafletImage(map, function(err, canvas) {
+    if (err) {
+      console.error("Erro ao capturar o mapa como imagem:", err);
+      alert("Ocorreu um erro ao gerar a imagem. Veja o console para detalhes.");
+      return;
+    }
+    
+    // 3) Converte o Canvas em um Blob PNG
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        alert("Falha ao criar o blob da imagem.");
+        return;
+      }
+      // 4) Cria uma URL temporária e força o download
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      // nome do arquivo que será baixado
+      a.download = "mapa_postes.png";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }, "image/png");
+  });
+});
