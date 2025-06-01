@@ -649,3 +649,58 @@ function limparTudo() {
   // Restaura todos os postes no mapa
   resetarMapa();
 }
+// =================================================================
+//  BOTÃO “Gerar Excel”
+// =================================================================
+document.getElementById("btnGerarExcel").addEventListener("click", () => {
+  // 1) Pegar o texto do campo #ids-multiplos
+  const entrada = document.getElementById("ids-multiplos").value.trim();
+  if (!entrada) {
+    alert("Por favor, informe ao menos um ID de poste para gerar o relatório.");
+    return;
+  }
+
+  // 2) Quebrar o texto em array (por vírgula, espaço ou quebra de linha)
+  const idsArray = entrada
+    .split(/[\s,;]+/)
+    .map((s) => s.trim())
+    .filter((s) => s !== "");
+
+  if (idsArray.length === 0) {
+    alert("Não foi possível extrair nenhum ID válido.");
+    return;
+  }
+
+  // 3) Montar payload JSON
+  const payload = { ids: idsArray };
+
+  // 4) Fazer requisição ao backend para gerar o XLSX
+  fetch("/api/postes/report", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      // Se você precisar de algum token de autenticação, insira aqui. Ex.:
+      // "Authorization": "Bearer <seu-token>"
+    },
+    body: JSON.stringify(payload),
+  })
+    .then((res) => {
+      if (!res.ok) throw new Error("Erro ao gerar relatório no servidor.");
+      return res.blob();
+    })
+    .then((blob) => {
+      // 5) Criar URL temporária e forçar download
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "relatorio_postes.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    })
+    .catch((err) => {
+      console.error("Erro ao tentar baixar Excel:", err);
+      alert("Ocorreu um erro ao gerar o Excel. Verifique o console para mais detalhes.");
+    });
+});
