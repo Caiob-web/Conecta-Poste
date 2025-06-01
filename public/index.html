@@ -22,7 +22,7 @@
       }
       .painel-busca {
         position: absolute;
-        /* desloquei de 10px para 100px */
+        /* deslocado de 10px para 100px */
         top: 100px;
         right: 10px;
         z-index: 1000;
@@ -141,11 +141,13 @@
     </style>
   </head>
   <body>
+    <!-- Botões no topo: esconder painel e “minha localização” -->
     <button id="togglePainel" class="botao-topo">🙈 Esconder Painel</button>
     <button id="localizacaoUsuario" class="botao-topo">
       📍 Minha Localização
     </button>
 
+    <!-- Painel de busca / filtros / relatórios -->
     <div class="painel-busca" id="painelBusca">
       <input
         type="text"
@@ -171,6 +173,7 @@
         placeholder="Filtrar por empresa"
       />
       <datalist id="lista-empresas"></datalist>
+
       <textarea
         id="ids-multiplos"
         rows="3"
@@ -183,13 +186,15 @@
         <button onclick="filtrarEmpresa()">🏢 Filtrar</button>
         <button onclick="buscarPorRua()">🏠 Rua</button>
         <button onclick="consultarIDsEmMassa()">🔎 Verificar IDs</button>
+        <!-- Botão Gerar Excel (adicionado) -->
+        <button id="btnGerarExcel">📊 Excel</button>
         <button onclick="limparTudo()">🧹 Limpar</button>
-        <button onclick="gerarExcel()">📊 Excel</button>
         <button onclick="gerarPDFComMapa()">📄 PDF</button>
         <button onclick="resetarMapa()">🔄 Tudo</button>
       </div>
     </div>
 
+    <!-- Legenda de cores -->
     <div class="legenda">
       <div class="legenda-item">
         <div class="bolinha" style="background: yellow"></div>
@@ -205,22 +210,26 @@
       </div>
     </div>
 
+    <!-- Div que receberá o mapa Leaflet -->
     <div id="map"></div>
 
+    <!-- Scripts necessários -->
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+    <!-- Seu script principal -->
     <script src="script.js"></script>
 
+    <!-- Widget de hora e clima no canto inferior direito -->
     <div id="widget-clima">
       <div id="hora">🕒 Carregando hora...</div>
       <div id="tempo">⛅ Carregando previsão do tempo...</div>
     </div>
 
-    <!-- PDF + Mapa Image -->
+    <!-- Bibliotecas para PDF + captura de mapa -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://unpkg.com/leaflet-image/leaflet-image.js"></script>
 
-    <!-- Spinner de Carregamento -->
+    <!-- Overlay de carregamento (spinner) -->
     <div id="carregando" class="overlay-loading">
       <div class="spinner"></div>
       <div class="texto-loading">Carregando postes...</div>

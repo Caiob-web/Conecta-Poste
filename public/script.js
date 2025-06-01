@@ -1,3 +1,7 @@
+// =====================================================================
+//  script.js completo com todas as funções + “Gerar Excel”
+// =====================================================================
+
 // Inicializa o mapa
 const map = L.map("map").setView([-23.2, -45.9], 12);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
@@ -13,17 +17,18 @@ const markers = L.markerClusterGroup({
 markers.on("clusterclick", (a) => a.layer.spiderfy());
 
 const todosPostes = [];
-const empresasContagem = {};
+const empresasContagem = [];
+
 // Adiciona o controle do spinner de carregamento
 const spinner = document.getElementById("carregando");
 if (spinner) spinner.style.display = "block"; // mostra o spinner
 
+// Primeira requisição para carregar dados (você já tinha isso)
 fetch("/api/postes")
   .then((res) => res.json())
   .then((data) => {
-    // ... (lógica que já existia)
-
-    // Esconde o spinner após carregar
+    // ... (lógica original que você já usava)
+    // Ao fim, esconde o spinner
     if (spinner) spinner.style.display = "none";
   })
   .catch((err) => {
@@ -32,6 +37,7 @@ fetch("/api/postes")
     alert("Aguarde o Carregamento do Aplicativo.");
   });
 
+// Segunda requisição (agrupa empresas e cria os marcadores)
 fetch("/api/postes")
   .then((res) => res.json())
   .then((data) => {
@@ -53,11 +59,12 @@ fetch("/api/postes")
         };
       }
 
-      // ✅ Adiciona a empresa apenas se for diferente de "DISPONÍVEL"
+      // Só adiciona se não for "DISPONÍVEL"
       if (poste.empresa && poste.empresa.toUpperCase() !== "DISPONÍVEL") {
         agrupado[key].empresas.add(poste.empresa);
       }
     });
+
     Object.values(agrupado).forEach((poste) => {
       const empresasArray = [...poste.empresas];
       empresasArray.forEach((empresa) => {
@@ -78,8 +85,10 @@ fetch("/api/postes")
       const marker = L.marker([poste.lat, poste.lon], { icon: icone });
       marker.bindPopup(
         `<b>ID do Poste:</b> ${poste.id_poste}<br>
-   <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br>
-   <b>Empresas:</b><ul>${listaEmpresas}</ul>`
+         <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(
+          6
+        )}<br>
+         <b>Empresas:</b><ul>${listaEmpresas}</ul>`
       );
       marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
         direction: "top",
@@ -92,6 +101,10 @@ fetch("/api/postes")
     map.addLayer(markers);
     preencherAutocomplete();
   });
+
+// =====================================================================
+//  FUNÇÕES DE INTERAÇÃO COM O MAPA E FILTROS
+// =====================================================================
 
 function preencherAutocomplete() {
   const lista = document.getElementById("lista-empresas");
@@ -128,6 +141,7 @@ function buscarID() {
     alert("Poste não encontrado.");
   }
 }
+
 function buscarCoordenada() {
   const coordInput = document.getElementById("busca-coord").value.trim();
   const partes = coordInput.split(",");
@@ -235,8 +249,10 @@ function filtrarEmpresa() {
     const marker = L.marker([poste.lat, poste.lon], { icon: icone });
     marker.bindPopup(
       `<b>ID do Poste:</b> ${poste.id_poste}<br>
-       <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br>
-       <b>Empresas:</b><ul>${listaEmpresas}</ul>`
+         <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(
+        6
+      )}<br>
+         <b>Empresas:</b><ul>${listaEmpresas}</ul>`
     );
     marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
       direction: "top",
@@ -244,6 +260,7 @@ function filtrarEmpresa() {
     markers.addLayer(marker);
   });
 }
+
 function resetarMapa() {
   markers.clearLayers();
   todosPostes.forEach((poste) => {
@@ -260,8 +277,10 @@ function resetarMapa() {
     const marker = L.marker([poste.lat, poste.lon], { icon: icone });
     marker.bindPopup(
       `<b>ID do Poste:</b> ${poste.id_poste}<br>
-       <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br>
-       <b>Empresas:</b><ul>${listaEmpresas}</ul>`
+         <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(
+        6
+      )}<br>
+         <b>Empresas:</b><ul>${listaEmpresas}</ul>`
     );
     marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
       direction: "top",
@@ -269,6 +288,7 @@ function resetarMapa() {
     markers.addLayer(marker);
   });
 }
+
 // Botão de esconder painel
 document.getElementById("togglePainel").addEventListener("click", () => {
   const painel = document.getElementById("painelBusca");
@@ -281,7 +301,7 @@ document.getElementById("togglePainel").addEventListener("click", () => {
   }
 });
 
-// Botão de localização
+// Botão de localização do usuário
 document.getElementById("localizacaoUsuario").addEventListener("click", () => {
   if (!navigator.geolocation) {
     alert("Geolocalização não suportada pelo navegador.");
@@ -301,6 +321,8 @@ document.getElementById("localizacaoUsuario").addEventListener("click", () => {
     }
   );
 });
+
+// Autocomplete de ruas via Nominatim
 document
   .getElementById("busca-rua")
   .addEventListener("input", async function () {
@@ -327,6 +349,7 @@ document
       console.error("Erro ao sugerir ruas:", erro);
     }
   });
+
 function buscarPorRua() {
   const rua = document.getElementById("busca-rua").value.trim();
   if (!rua) return alert("Digite um nome de rua.");
@@ -450,6 +473,7 @@ function obterPrevisaoDoTempo(lat, lon) {
 setInterval(() => {
   navigator.geolocation.getCurrentPosition(success, error);
 }, 600000); // ✅ agora está correto
+
 // Função principal para consultar múltiplos IDs e traçar no mapa
 function consultarIDsEmMassa() {
   const entrada = document.getElementById("ids-multiplos").value;
@@ -517,7 +541,7 @@ function consultarIDsEmMassa() {
     window.numeroMarkers.push(marker);
   });
 
-  // Postes esquecidos (intermediários)
+  // Postes intermediários (esquecidos)
   window.intermediarios = [];
 
   for (let i = 0; i < encontrados.length - 1; i++) {
@@ -576,7 +600,9 @@ function consultarIDsEmMassa() {
 // Geração de PDF com resumo e imagem
 function gerarPDFComMapa() {
   if (!window.tracadoMassivo) {
-    return alert("Você precisa primeiro verificar múltiplos IDs e gerar um traçado.");
+    return alert(
+      "Você precisa primeiro verificar múltiplos IDs e gerar um traçado."
+    );
   }
 
   leafletImage(map, function (err, canvas) {
@@ -596,16 +622,32 @@ function gerarPDFComMapa() {
       disponiveis: 0,
       ocupados: 0,
       naoEncontrados: [],
-      intermediarios: 0
+      intermediarios: 0,
     };
 
     let y = 140;
     doc.setFontSize(12);
     doc.text(`Resumo da Verificação:`, 10, y);
-    doc.text(`✔️ Postes Disponíveis (até 4 empresas): ${resumo.disponiveis}`, 10, y + 10);
-    doc.text(`❌ Postes Indisponíveis (5 ou mais empresas): ${resumo.ocupados}`, 10, y + 20);
-    doc.text(`⚠️ IDs não encontrados: ${resumo.naoEncontrados.length}`, 10, y + 30);
-    doc.text(`🟡 Postes intermediários (esquecidos): ${resumo.intermediarios}`, 10, y + 40);
+    doc.text(
+      `✔️ Postes Disponíveis (até 4 empresas): ${resumo.disponiveis}`,
+      10,
+      y + 10
+    );
+    doc.text(
+      `❌ Postes Indisponíveis (5 ou mais empresas): ${resumo.ocupados}`,
+      10,
+      y + 20
+    );
+    doc.text(
+      `⚠️ IDs não encontrados: ${resumo.naoEncontrados.length}`,
+      10,
+      y + 30
+    );
+    doc.text(
+      `🟡 Postes intermediários (esquecidos): ${resumo.intermediarios}`,
+      10,
+      y + 40
+    );
 
     if (resumo.naoEncontrados.length > 0) {
       doc.text(`IDs não encontrados (máx 50):`, 10, y + 55);
@@ -617,6 +659,7 @@ function gerarPDFComMapa() {
     doc.save("tracado_postes.pdf");
   });
 }
+
 // Função para calcular distância em metros entre duas coordenadas
 function getDistanciaMetros(lat1, lon1, lat2, lon2) {
   const R = 6371000;
@@ -628,6 +671,7 @@ function getDistanciaMetros(lat1, lon1, lat2, lon2) {
     Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
+
 function limparTudo() {
   // Limpa marcadores do traçado e intermediários
   if (window.tracadoMassivo) {
@@ -649,9 +693,10 @@ function limparTudo() {
   // Restaura todos os postes no mapa
   resetarMapa();
 }
-// =================================================================
+
+// =====================================================================
 //  BOTÃO “Gerar Excel”
-// =================================================================
+// =====================================================================
 document.getElementById("btnGerarExcel").addEventListener("click", () => {
   // 1) Pegar o texto do campo #ids-multiplos
   const entrada = document.getElementById("ids-multiplos").value.trim();
@@ -679,7 +724,7 @@ document.getElementById("btnGerarExcel").addEventListener("click", () => {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      // Se você precisar de algum token de autenticação, insira aqui. Ex.:
+      // Se você precisar de algum token de autenticação, insira aqui, por exemplo:
       // "Authorization": "Bearer <seu-token>"
     },
     body: JSON.stringify(payload),
@@ -701,6 +746,8 @@ document.getElementById("btnGerarExcel").addEventListener("click", () => {
     })
     .catch((err) => {
       console.error("Erro ao tentar baixar Excel:", err);
-      alert("Ocorreu um erro ao gerar o Excel. Verifique o console para mais detalhes.");
+      alert(
+        "Ocorreu um erro ao gerar o Excel. Verifique o console para mais detalhes."
+      );
     });
 });
