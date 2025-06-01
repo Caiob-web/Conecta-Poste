@@ -4,7 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mapa de Postes</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet/dist/leaflet.css"
+    />
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"
@@ -145,7 +148,7 @@
     </style>
   </head>
   <body>
-    <!-- Botões no topo: esconder painel e “minha localização” -->
+    <!-- Botões no topo: esconder painel e Minha Localização -->
     <button id="togglePainel" class="botao-topo">🙈 Esconder Painel</button>
     <button id="localizacaoUsuario" class="botao-topo">
       📍 Minha Localização
@@ -181,9 +184,7 @@
         <button onclick="buscarCoordenada()">📍 Coordenada</button>
         <button onclick="filtrarEmpresa()">🏢 Filtrar</button>
         <button onclick="buscarPorRua()">🏠 Rua</button>
-
         <button onclick="consultarIDsEmMassa()">🔎 Verificar IDs</button>
-        <!-- Botão Gerar Excel (adicionado) -->
         <button id="btnGerarExcel">📊 Excel</button>
         <button id="btnGerarImagem">📷 Imagem</button>
         <button onclick="limparTudo()">🧹 Limpar</button>
@@ -214,7 +215,6 @@
     <!-- Scripts necessários -->
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
-    <!-- Seu script principal -->
     <script src="script.js"></script>
 
     <!-- Widget de hora e clima no canto inferior direito -->
