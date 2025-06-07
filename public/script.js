@@ -23,17 +23,24 @@ const spinner = document.getElementById("carregando");
 if (spinner) spinner.style.display = "block";
 
 fetch(`${BASE_URL}/api/postes`)
-  .then((res) => res.json())
-  .then((data) => {
-    if (spinner) spinner.style.display = "none";
-    // (lógica original de cache/uso de data se desejar)
+  .then(res => {
+    if (!res.ok) throw new Error(`Status ${res.status}`);
+    return res.json();
   })
-  .catch((err) => {
-    console.error("Aguarde o Carregamento do Aplicativo:", err);
-    if (spinner) spinner.style.display = "none";
-    alert("Aguarde o Carregamento do Aplicativo.");
+  .then(data => {
+    console.log("GET /api/postes retornou:", data);
+    if (!Array.isArray(data)) {
+      console.error("Esperava um array de postes, mas recebi:", data);
+      return;
+    }
+    // daqui pra baixo já podemos usar data.forEach(...)
+    data.forEach(poste => {
+      // … seu código original
+    });
+  })
+  .catch(err => {
+    console.error("Erro ao buscar postes:", err);
   });
-
 fetch(`${BASE_URL}/api/postes`)
   .then((res) => res.json())
   .then((data) => {
