@@ -12,6 +12,16 @@ const port = process.env.PORT || 3000;
 // ===========================================================
 // 1) MIDDLEWARES
 // ===========================================================
+// Desabilita ETag e força no-cache
+app.disable("etag");
+app.use((req, res, next) => {
+  res.setHeader(
+    "Cache-Control",
+    "no-store, no-cache, must-revalidate, proxy-revalidate"
+  );
+  next();
+});
+
 app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
 app.use(express.json());
 
@@ -22,30 +32,12 @@ app.use(express.static(path.join(__dirname, "public")));
 // 2) CONFIGURAÇÃO DOS POOLS PARA CADA CIDADE VIA ENV VARS
 // ===========================================================
 const pools = {
-  sjc: new Pool({
-    connectionString: process.env.DB_URL_SJC,
-    ssl: { rejectUnauthorized: false },
-  }),
-  mogi: new Pool({
-    connectionString: process.env.DB_URL_MOGI,
-    ssl: { rejectUnauthorized: false },
-  }),
-  ln: new Pool({
-    connectionString: process.env.DB_URL_LN,
-    ssl: { rejectUnauthorized: false },
-  }),
-  guarulhos: new Pool({
-    connectionString: process.env.DB_URL_GUARULHOS,
-    ssl: { rejectUnauthorized: false },
-  }),
-  guara: new Pool({
-    connectionString: process.env.DB_URL_GUARA,
-    ssl: { rejectUnauthorized: false },
-  }),
-  demais: new Pool({
-    connectionString: process.env.DB_URL_DEMAIS,
-    ssl: { rejectUnauthorized: false },
-  }),
+  sjc: new Pool({ connectionString: process.env.DB_URL_SJC, ssl: { rejectUnauthorized: false } }),
+  mogi: new Pool({ connectionString: process.env.DB_URL_MOGI, ssl: { rejectUnauthorized: false } }),
+  ln: new Pool({ connectionString: process.env.DB_URL_LN, ssl: { rejectUnauthorized: false } }),
+  guarulhos: new Pool({ connectionString: process.env.DB_URL_GUARULHOS, ssl: { rejectUnauthorized: false } }),
+  guara: new Pool({ connectionString: process.env.DB_URL_GUARA, ssl: { rejectUnauthorized: false } }),
+  demais: new Pool({ connectionString: process.env.DB_URL_DEMAIS, ssl: { rejectUnauthorized: false } }),
 };
 
 // ===========================================================
@@ -63,12 +55,12 @@ app.get("/api/postes", async (req, res) => {
 
   try {
     const results = await Promise.all(
-      Object.values(pools).map(pool => 
-        pool.query(`
-          SELECT id_poste, empresa, resumo, coordenadas, nome_municipio
-          FROM dados_poste
-          WHERE coordenadas IS NOT NULL AND TRIM(coordenadas) <> ''
-        `).then(r => r.rows)
+      Object.values(pools).map(pool =>
+        pool.query(
+          `SELECT id_poste, empresa, resumo, coordenadas, nome_municipio
+           FROM dados_poste
+           WHERE coordenadas IS NOT NULL AND TRIM(coordenadas) <> ''`
+        ).then(r => r.rows)
       )
     );
 
@@ -92,21 +84,18 @@ app.post("/api/postes/report", async (req, res) => {
       return res.status(400).json({ error: "Envie um array de IDs no corpo da requisição." });
     }
 
-    // Converter e filtrar ids válidos
     const idsNum = ids.map(x => parseInt(x, 10)).filter(n => !isNaN(n));
     if (!idsNum.length) {
       return res.status(400).json({ error: "Nenhum ID válido encontrado." });
     }
 
-    // Busca em todos os pools
     const registros = await Promise.all(
-      Object.values(pools).map(pool => 
+      Object.values(pools).map(pool =>
         pool.query(
           `SELECT id_poste, empresa, coordenadas
            FROM dados_poste
            WHERE coordenadas IS NOT NULL AND TRIM(coordenadas) <> ''
-             AND id_poste = ANY($1)
-          `,
+             AND id_poste = ANY($1)`,
           [idsNum]
         ).then(r => r.rows)
       )
@@ -117,7 +106,6 @@ app.post("/api/postes/report", async (req, res) => {
       return res.status(404).json({ error: "Nenhum poste encontrado para esses IDs." });
     }
 
-    // Agrupa por poste
     const mapPorPoste = {};
     todosRegistros.forEach(({ id_poste, empresa, coordenadas }) => {
       if (!mapPorPoste[id_poste]) {
@@ -128,7 +116,6 @@ app.post("/api/postes/report", async (req, res) => {
       }
     });
 
-    // Monta workbook
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Relatório de Postes");
     sheet.columns = [
@@ -145,7 +132,6 @@ app.post("/api/postes/report", async (req, res) => {
       });
     });
 
-    // Headers para download
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
