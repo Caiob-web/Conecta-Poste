@@ -1,6 +1,6 @@
-// =====================================================================
-//  script.js completo com todas as funções + “Gerar Excel”
-// =====================================================================
+// script.js
+
+const BASE_URL = "https://conecta-poste-production.up.railway.app";
 
 // Inicializa o mapa
 const map = L.map("map").setView([-23.2, -45.9], 12);
@@ -13,23 +13,20 @@ const markers = L.markerClusterGroup({
   maxClusterRadius: 60,
   disableClusteringAtZoom: 17,
 });
-
 markers.on("clusterclick", (a) => a.layer.spiderfy());
 
 const todosPostes = [];
 const empresasContagem = [];
 
-// Adiciona o controle do spinner de carregamento
+// Carregamento inicial
 const spinner = document.getElementById("carregando");
-if (spinner) spinner.style.display = "block"; // mostra o spinner
+if (spinner) spinner.style.display = "block";
 
-// Primeira requisição para carregar dados (você já tinha isso)
-fetch("/api/postes")
+fetch(`${BASE_URL}/api/postes`)
   .then((res) => res.json())
   .then((data) => {
-    // ... (lógica original que você já usava)
-    // Ao fim, esconde o spinner
     if (spinner) spinner.style.display = "none";
+    // (lógica original de cache/uso de data se desejar)
   })
   .catch((err) => {
     console.error("Aguarde o Carregamento do Aplicativo:", err);
@@ -37,8 +34,7 @@ fetch("/api/postes")
     alert("Aguarde o Carregamento do Aplicativo.");
   });
 
-// Segunda requisição (agrupa empresas e cria os marcadores)
-fetch("/api/postes")
+fetch(`${BASE_URL}/api/postes`)
   .then((res) => res.json())
   .then((data) => {
     const agrupado = {};
@@ -48,56 +44,27 @@ fetch("/api/postes")
       if (isNaN(lat) || isNaN(lon)) return;
       const key = poste.id_poste;
       if (!agrupado[key]) {
-        agrupado[key] = {
-          id_poste: poste.id_poste,
-          resumo: poste.resumo,
-          nome_municipio: poste.nome_municipio,
-          coordenadas: poste.coordenadas,
-          empresas: new Set(),
-          lat,
-          lon,
-        };
+        agrupado[key] = { id_poste: poste.id_poste, resumo: poste.resumo, nome_municipio: poste.nome_municipio, coordenadas: poste.coordenadas, empresas: new Set(), lat, lon };
       }
-
-      // Só adiciona se não for "DISPONÍVEL"
       if (poste.empresa && poste.empresa.toUpperCase() !== "DISPONÍVEL") {
         agrupado[key].empresas.add(poste.empresa);
       }
     });
-
     Object.values(agrupado).forEach((poste) => {
       const empresasArray = [...poste.empresas];
       empresasArray.forEach((empresa) => {
         empresasContagem[empresa] = (empresasContagem[empresa] || 0) + 1;
       });
-
       const qtdEmpresas = empresasArray.length;
       const cor = qtdEmpresas >= 5 ? "red" : "green";
-
-      const icone = L.divIcon({
-        className: "",
-        html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
-        iconSize: [16, 16],
-        iconAnchor: [8, 8],
-      });
-
-      const listaEmpresas = empresasArray.map((e) => `<li>${e}</li>`).join("");
+      const icone = L.divIcon({ html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`, iconSize: [16,16], iconAnchor: [8,8] });
+      const listaEmpresas = empresasArray.map(e => `<li>${e}</li>`).join("");
       const marker = L.marker([poste.lat, poste.lon], { icon: icone });
-      marker.bindPopup(
-        `<b>ID do Poste:</b> ${poste.id_poste}<br>
-         <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(
-          6
-        )}<br>
-         <b>Empresas:</b><ul>${listaEmpresas}</ul>`
-      );
-      marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
-        direction: "top",
-      });
-
+      marker.bindPopup(`<b>ID do Poste:</b> ${poste.id_poste}<br><b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br><b>Empresas:</b><ul>${listaEmpresas}</ul>`);
+      marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, { direction: "top" });
       markers.addLayer(marker);
       todosPostes.push({ ...poste, empresas: empresasArray });
     });
-
     map.addLayer(markers);
     preencherAutocomplete();
   });
