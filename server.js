@@ -12,36 +12,26 @@ const port = process.env.PORT || 3000;
 // ===========================================================
 // 1) MIDDLEWARES
 // ===========================================================
-// Desabilita ETag e força no-cache
 app.disable("etag");
 app.use((req, res, next) => {
-  res.setHeader(
-    "Cache-Control",
-    "no-store, no-cache, must-revalidate, proxy-revalidate"
-  );
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   next();
 });
 
 app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
 app.use(express.json());
-
-// Serve arquivos estáticos em /public
 app.use(express.static(path.join(__dirname, "public")));
 
 // ===========================================================
-// 2) CONFIGURAÇÃO DOS POOLS PARA CADA CIDADE VIA ENV VARS
+// 2) POOL DE CONEXÃO Único PARA O NEON
 // ===========================================================
-const pools = {
-  sjc: new Pool({ connectionString: process.env.DB_URL_SJC, ssl: { rejectUnauthorized: false } }),
-  mogi: new Pool({ connectionString: process.env.DB_URL_MOGI, ssl: { rejectUnauthorized: false } }),
-  ln: new Pool({ connectionString: process.env.DB_URL_LN, ssl: { rejectUnauthorized: false } }),
-  guarulhos: new Pool({ connectionString: process.env.DB_URL_GUARULHOS, ssl: { rejectUnauthorized: false } }),
-  guara: new Pool({ connectionString: process.env.DB_URL_GUARA, ssl: { rejectUnauthorized: false } }),
-  demais: new Pool({ connectionString: process.env.DB_URL_DEMAIS, ssl: { rejectUnauthorized: false } }),
-};
+const pool = new Pool({
+  connectionString: "postgresql://neondb_owner:npg_CIxXZ6mF9Oud@ep-dawn-boat-a8zaanby-pooler.eastus2.azure.neon.tech/neondb?sslmode=require",
+  ssl: { rejectUnauthorized: false },
+});
 
 // ===========================================================
-// 3) CACHE PARA /api/postes (GET)
+// 3) CACHE LOCAL EM MEMÓRIA
 // ===========================================================
 let cachePostes = null;
 let cacheTimestamp = 0;
@@ -54,60 +44,48 @@ app.get("/api/postes", async (req, res) => {
   }
 
   try {
-    const results = await Promise.all(
-      Object.values(pools).map(pool =>
-        pool.query(
-          `SELECT id_poste, empresa, resumo, coordenadas, nome_municipio
-           FROM dados_poste
-           WHERE coordenadas IS NOT NULL AND TRIM(coordenadas) <> ''`
-        ).then(r => r.rows)
-      )
+    const { rows } = await pool.query(
+      `SELECT id_poste, coordenadas FROM vw_postes_com_coord WHERE coordenadas IS NOT NULL AND TRIM(coordenadas) <> ''`
     );
 
-    const todosPostes = results.flat();
-    cachePostes = todosPostes;
+    cachePostes = rows;
     cacheTimestamp = now;
-    res.json(todosPostes);
+    res.json(rows);
   } catch (err) {
-    console.error("Erro ao buscar dados:", err);
+    console.error("Erro ao buscar dados dos postes:", err);
     res.status(500).json({ error: "Erro no servidor" });
   }
 });
 
 // ===========================================================
-// 4) ROTA: POST /api/postes/report → GERA O EXCEL
+// 4) ROTA DE RELATÓRIO EM EXCEL PARA POSTES
 // ===========================================================
 app.post("/api/postes/report", async (req, res) => {
   try {
     const { ids } = req.body;
     if (!Array.isArray(ids) || !ids.length) {
-      return res.status(400).json({ error: "Envie um array de IDs no corpo da requisição." });
+      return res.status(400).json({ error: "Envie um array de IDs." });
     }
 
     const idsNum = ids.map(x => parseInt(x, 10)).filter(n => !isNaN(n));
     if (!idsNum.length) {
-      return res.status(400).json({ error: "Nenhum ID válido encontrado." });
+      return res.status(400).json({ error: "Nenhum ID válido." });
     }
 
-    const registros = await Promise.all(
-      Object.values(pools).map(pool =>
-        pool.query(
-          `SELECT id_poste, empresa, coordenadas
-           FROM dados_poste
-           WHERE coordenadas IS NOT NULL AND TRIM(coordenadas) <> ''
-             AND id_poste = ANY($1)`,
-          [idsNum]
-        ).then(r => r.rows)
-      )
-    );
+    const query = `
+      SELECT p.id_poste, e.empresa, p.coordenadas
+      FROM vw_postes_com_coord p
+      LEFT JOIN empresas_ocupantes e ON p.id_poste = e.id_poste
+      WHERE p.id_poste = ANY($1)
+    `;
 
-    const todosRegistros = registros.flat();
-    if (!todosRegistros.length) {
-      return res.status(404).json({ error: "Nenhum poste encontrado para esses IDs." });
+    const { rows } = await pool.query(query, [idsNum]);
+    if (!rows.length) {
+      return res.status(404).json({ error: "Nenhum poste encontrado." });
     }
 
     const mapPorPoste = {};
-    todosRegistros.forEach(({ id_poste, empresa, coordenadas }) => {
+    rows.forEach(({ id_poste, empresa, coordenadas }) => {
       if (!mapPorPoste[id_poste]) {
         mapPorPoste[id_poste] = { coordenadas, empresas: new Set() };
       }
@@ -132,20 +110,14 @@ app.post("/api/postes/report", async (req, res) => {
       });
     });
 
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
-    res.setHeader(
-      "Content-Disposition",
-      "attachment; filename=relatorio_postes.xlsx"
-    );
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", "attachment; filename=relatorio_postes.xlsx");
 
     await workbook.xlsx.write(res);
     res.end();
   } catch (error) {
     console.error("Erro ao gerar relatório:", error);
-    res.status(500).json({ error: "Erro interno ao gerar relatório." });
+    res.status(500).json({ error: "Erro interno." });
   }
 });
 
