@@ -20,59 +20,105 @@
 
     <style>
       html, body {
-        margin: 0; padding: 0;
-        height: 100%; overflow: hidden;
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
         font-family: sans-serif;
       }
-      #map { height: 100vh; width: 100vw; }
-      .botao-topo {
-        position: absolute; right: 10px; z-index: 1001;
-        padding: 5px 10px; border-radius: 6px; border: none;
-        cursor: pointer; box-shadow: 0 0 6px rgba(0,0,0,0.2);
-        font-size: 13px; background: white;
+      #map {
+        height: 100vh;
+        width: 100vw;
       }
-      #togglePainel { top: 10px; }
-      #localizacaoUsuario { top: 50px; }
+      .botao-topo {
+        position: absolute;
+        right: 10px;
+        z-index: 1001;
+        padding: 5px 10px;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        box-shadow: 0 0 6px rgba(0, 0, 0, 0.2);
+        font-size: 13px;
+        background: white;
+      }
+      #togglePainel {
+        top: 10px;
+      }
+      #localizacaoUsuario {
+        top: 50px;
+      }
       .painel-busca {
-        position: absolute; top: 100px; right: 10px; z-index: 1000;
-        background: white; padding: 8px; border-radius: 8px;
-        box-shadow: 0 0 10px rgba(0,0,0,0.2); max-width: 260px;
+        position: absolute;
+        top: 100px;
+        right: 10px;
+        z-index: 1000;
+        background: white;
+        padding: 8px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        max-width: 260px;
       }
       .painel-busca input,
       .painel-busca textarea {
-        margin-bottom: 4px; width: 100%; padding: 4px;
-        font-size: 13px; box-sizing: border-box;
+        margin-bottom: 4px;
+        width: 100%;
+        padding: 4px;
+        font-size: 13px;
+        box-sizing: border-box;
       }
       .painel-busca .botoes {
-        display: flex; flex-wrap: wrap; gap: 4px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
       }
       .painel-busca button {
-        flex: 1 1 48%; padding: 5px; font-size: 12px;
+        flex: 1 1 48%;
+        padding: 5px;
+        font-size: 12px;
         cursor: pointer;
       }
       .legenda {
-        position: absolute; bottom: 10px; right: 10px;
-        background: white; padding: 10px; border-radius: 8px;
-        font-size: 14px; box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        background: white;
+        padding: 10px;
+        border-radius: 8px;
+        font-size: 14px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
       }
       .legenda-item {
-        display: flex; align-items: center; margin-bottom: 5px;
+        display: flex;
+        align-items: center;
+        margin-bottom: 5px;
       }
       .bolinha {
-        width: 12px; height: 12px; border-radius:50%;
-        margin-right: 8px; border:1px solid #555;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 8px;
+        border: 1px solid #555;
       }
       #widget-clima {
-        position: fixed; bottom:10px; left:10px;
-        background: white; border:1px solid #ccc;
-        border-radius:12px; padding:10px 15px;
-        font-size:14px; z-index:1000;
-        box-shadow:0 2px 8px rgba(0,0,0,0.2);
-        max-width:260px; line-height:1.4;
+        position: fixed;
+        bottom: 10px;
+        left: 10px;
+        background: white;
+        border: 1px solid #ccc;
+        border-radius: 12px;
+        padding: 10px 15px;
+        font-size: 14px;
+        z-index: 1000;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        max-width: 260px;
+        line-height: 1.4;
       }
       #widget-clima img {
-        height:24px; width:24px; vertical-align:middle;
-        margin-right:4px;
+        height: 24px;
+        width: 24px;
+        vertical-align: middle;
+        margin-right: 4px;
       }
     </style>
   </head>
@@ -84,27 +130,23 @@
 
     <!-- Painel de busca e filtros -->
     <div class="painel-busca" id="painelBusca">
-      <input id="busca-id"       type="text" placeholder="Buscar por ID do poste" />
-      <input id="busca-coord"    type="text" placeholder="Latitude,Longitude" />
-      <input id="busca-rua"      type="text" placeholder="Buscar por rua" list="sugestoes-rua" />
+      <input id="busca-id" type="text" placeholder="Buscar por ID do poste" />
+      <input id="busca-coord" type="text" placeholder="Latitude,Longitude" />
+      <input id="busca-rua" type="text" placeholder="Buscar por rua" list="sugestoes-rua" />
       <datalist id="sugestoes-rua"></datalist>
       <input id="filtro-empresa" type="text" placeholder="Filtrar por empresa" list="lista-empresas" />
       <datalist id="lista-empresas"></datalist>
-      <textarea
-        id="ids-multiplos"
-        rows="3"
-        placeholder="Cole IDs separados por vírgula ou linha"
-      ></textarea>
+      <textarea id="ids-multiplos" rows="3" placeholder="Cole IDs separados por vírgula ou linha"></textarea>
       <div class="botoes">
-        <button data-action="buscar-id">🔍 ID</button>
-        <button data-action="buscar-coord">📍 Coordenada</button>
-        <button data-action="filtrar-empresa">🏢 Filtrar</button>
-        <button data-action="buscar-rua">🏠 Rua</button>
-        <button data-action="verificar-ids">🔎 IDs</button>
-        <button id="btnGerarExcel">📊 Excel</button>
-        <button data-action="limpar">🧹 Limpar</button>
-        <button data-action="gerar-pdf">📄 PDF</button>
-        <button data-action="resetar">🔄 Tudo</button>
+        <button type="button" data-action="buscar-id">🔍 ID</button>
+        <button type="button" data-action="buscar-coord">📍 Coordenada</button>
+        <button type="button" data-action="filtrar-empresa">🏢 Filtrar</button>
+        <button type="button" data-action="buscar-rua">🏠 Rua</button>
+        <button type="button" data-action="verificar-ids">🔎 IDs</button>
+        <button type="button" id="btnGerarExcel">📊 Excel</button>
+        <button type="button" data-action="limpar">🧹 Limpar</button>
+        <button type="button" data-action="gerar-pdf">📄 PDF</button>
+        <button type="button" data-action="resetar">🔄 Tudo</button>
       </div>
     </div>
 
@@ -118,25 +160,21 @@
       </div>
     </div>
 
-    <!-- Mapa e widget -->
+    <!-- Mapa -->
     <div id="map"></div>
+
+    <!-- Widget clima/hora -->
     <div id="widget-clima">
       <div id="hora">🕒 Carregando hora...</div>
       <div id="tempo">⛅ Carregando previsão do tempo...</div>
     </div>
 
-    <!-- 1) Scripts de bibliotecas (garanta esta ordem) -->
-    <script
-      src="https://unpkg.com/leaflet/dist/leaflet.js"
-      crossorigin=""
-    ></script>
-    <script
-      src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"
-      crossorigin=""
-    ></script>
-    <script src="https://unpkg.com/ngeohash/dist/ngeohash.min.js"></script>
+    <!-- 1) Dependências de bibliotecas -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js" crossorigin=""></script>
+    <script src="https://unpkg.com/ngeohash/main.js"></script>
 
-    <!-- 2) Seu código -->
+    <!-- 2) Seu código principal -->
     <script src="script.js"></script>
   </body>
 </html>
