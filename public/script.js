@@ -6,14 +6,16 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
 // Configura MarkerCluster (chunkedLoading para performance)
 const markers = L.markerClusterGroup({
-  spiderfyOnMaxZoom: true,
-  showCoverageOnHover: false,
-  zoomToBoundsOnClick: false,
-  maxClusterRadius: 60,
-  disableClusteringAtZoom: 17,
-  chunkedLoading: true,
-  chunkProgress: 0.05
-});
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    zoomToBoundsOnClick: false,
+    maxClusterRadius: 60,
+    disableClusteringAtZoom: 17,
+    // Carregamento em chunks para não travar UI
+    chunkedLoading: true,
+    chunkInterval: 200,  // ms entre processar cada lote
+    chunkDelay: 50       // ms de pausa entre lotes
+  });
 markers.on("clusterclick", (a) => a.layer.spiderfy());
 map.addLayer(markers);
 
