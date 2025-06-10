@@ -55,6 +55,10 @@ async function obterCache(key) {
 
 // 3) Chave de tile via geohash (usa global ngeohash)
 function bboxToGeohash(bounds, precision = 6) {
+  if (typeof ngeohash === 'undefined') {
+    console.error('ngeohash não encontrado. Verifique se o script foi carregado corretamente.');
+    return null;
+  }
   const sw = bounds.getSouthWest();
   const ne = bounds.getNorthEast();
   const lat = (sw.lat + ne.lat) / 2;
@@ -140,3 +144,14 @@ const icone = L.divIcon({
   // primeiro carregamento
   carregarPostesPorTile();
 })();
+
+// 8) Handlers globais para botões do painel
+window.buscarID = () => console.warn('buscarID ainda não implementada');
+window.buscarCoordenada = () => console.warn('buscarCoordenada ainda não implementada');
+window.filtrarEmpresa = () => console.warn('filtrarEmpresa ainda não implementada');
+window.buscarPorRua = () => console.warn('buscarPorRua ainda não implementada');
+window.consultarIDsEmMassa = () => console.warn('consultarIDsEmMassa ainda não implementada');
+window.gerarExcel = () => console.warn('gerarExcel ainda não implementada');
+window.limparTudo = () => console.warn('limparTudo ainda não implementada');
+window.gerarPDFComMapa = () => console.warn('gerarPDFComMapa ainda não implementada');
+window.resetarMapa = () => console.warn('resetarMapa ainda não implementada');
