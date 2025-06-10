@@ -4,11 +4,12 @@
 const dbName = "PostesCache";
 const storeName = "PostesPorBbox";
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutos
+const MIN_ZOOM_TO_LOAD = 12; // zoom mínimo para carregar pontos
 
 let db;
 const memoryCache = new Map();
 
-// 1) Singleton IndexedDB (abre uma vez)
+// 1) Singleton IndexedDB
 const getDB = (() => {
   let promise;
   return () => {
@@ -26,12 +27,13 @@ const getDB = (() => {
   };
 })();
 
-// 2) Funções de cache no IndexedDB
+// 2) Cache no IndexedDB
 async function salvarCache(key, dados) {
   const database = await getDB();
   const tx = database.transaction(storeName, "readwrite");
   tx.objectStore(storeName).put({ key, timestamp: Date.now(), dados });
 }
+
 async function obterCache(key) {
   const database = await getDB();
   return new Promise(resolve => {
@@ -45,14 +47,14 @@ async function obterCache(key) {
   });
 }
 
-// 3) Gera chave fixa a partir da BBOX (lat/lng arredondados)
-function boundsToKey(bounds, precision = 4) {
+// 3) Chave de cache a partir da BBOX (latitude/longitude arredondados)
+function boundsToKey(bounds, precision = 3) {
   const sw = bounds.getSouthWest();
   const ne = bounds.getNorthEast();
   return `${sw.lat.toFixed(precision)},${sw.lng.toFixed(precision)}|${ne.lat.toFixed(precision)},${ne.lng.toFixed(precision)}`;
 }
 
-// 4) Busca dados no backend usando parâmetros BBOX
+// 4) Busca dados via parâmetros BBOX
 async function fetchDados(bounds) {
   const sw = bounds.getSouthWest();
   const ne = bounds.getNorthEast();
@@ -75,18 +77,18 @@ async function getDados(bounds) {
   return dados;
 }
 
-// 6) Ícone padrão dos marcadores
+// 6) Ícone dos marcadores
 const icone = L.divIcon({
   html: `<div style="width:14px;height:14px;border-radius:50%;background:green;border:2px solid white;"></div>`,
   iconSize: [16, 16],
   iconAnchor: [8, 8]
 });
 
-// 7) Inicialização do mapa + clusterização
+// 7) Inicializa mapa + clusterização
 (async () => {
   await getDB();
 
-  window.map = L.map("map").setView([-23.2, -45.9], 12);
+  window.map = L.map("map").setView([-23.2, -45.9], MIN_ZOOM_TO_LOAD);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
   window.markers = L.markerClusterGroup({
@@ -102,10 +104,15 @@ const icone = L.divIcon({
   let debounceTimer;
   map.on("moveend", () => {
     clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(loadPoints, 200);
+    debounceTimer = setTimeout(loadPoints, 500); // debounce 500ms
   });
 
   async function loadPoints() {
+    if (map.getZoom() < MIN_ZOOM_TO_LOAD) {
+      markers.clearLayers();
+      return;
+    }
+
     const spinner = document.getElementById("carregando");
     if (spinner) spinner.style.display = "flex";
 
@@ -113,9 +120,10 @@ const icone = L.divIcon({
       const dados = await getDados(map.getBounds());
       markers.clearLayers();
 
-      const pontos = dados.reduce((acc, item) => {
+      const pontos = [];
+      dados.forEach(item => {
         let lat, lon;
-        if ('lat' in item && 'lon' in item) {
+        if (item.lat !== undefined && item.lon !== undefined) {
           lat = item.lat;
           lon = item.lon;
         } else if (item.coordenadas) {
@@ -126,10 +134,9 @@ const icone = L.divIcon({
         if (!isNaN(lat) && !isNaN(lon)) {
           const m = L.marker([lat, lon], { icon: icone });
           m.bindPopup(`<b>ID:</b> ${item.id_poste}`);
-          acc.push(m);
+          pontos.push(m);
         }
-        return acc;
-      }, []);
+      });
 
       markers.addLayers(pontos);
     } catch (err) {
@@ -139,11 +146,11 @@ const icone = L.divIcon({
     }
   }
 
-  // Carregamento inicial
+  // carregamento inicial
   loadPoints();
 })();
 
-// 8) Handlers globais para botões do painel de busca
+// 8) Handlers globais UI
 function localizarUsuario() {
   if (!navigator.geolocation) return alert("Geolocalização não suportada.");
   navigator.geolocation.getCurrentPosition(
@@ -151,8 +158,7 @@ function localizarUsuario() {
       map.setView([coords.latitude, coords.longitude], 16, { animate: true });
       L.marker([coords.latitude, coords.longitude], { icon: icone })
         .addTo(markers)
-        .bindPopup("Você está aqui")
-        .openPopup();
+        .bindPopup("Você está aqui");
     },
     () => alert("Não foi possível obter localização.")
   );
@@ -167,7 +173,7 @@ function limparTudo()         { console.warn("limparTudo não implementado"); }
 function gerarPDFComMapa()    { console.warn("gerarPDFComMapa não implementado"); }
 function resetarMapa()        { console.warn("resetarMapa não implementado"); }
 
-// 9) Registro de eventos do painel de busca
+// 9) Eventos do painel de busca
 window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("togglePainel").addEventListener("click", () => {
     const p = document.getElementById("painelBusca");
