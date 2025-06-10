@@ -119,3 +119,30 @@ app.use((req, res) => res.status(404).json({ error: 'Rota não encontrada.' }));
 app.listen(port, () => console.log(`✅ Servidor rodando na porta ${port}`));
 process.on('SIGINT', () => pool.end(() => process.exit()));
 process.on('SIGTERM', () => pool.end(() => process.exit()));
+// ROTA: GET /api/empresas – com tile ou BBOX
+app.get('/api/empresas', async (req, res) => {
+  try {
+    const { north, south, east, west } = parseBboxOrTile(req.query);
+
+    const { rows } = await pool.query(
+      `SELECT
+         id_poste,
+         ROUND((split_part(coordenadas, ',', 1)::numeric), 5) AS lat,
+         ROUND((split_part(coordenadas, ',', 2)::numeric), 5) AS lon,
+         empresa,
+         nome_municipio
+       FROM empresa_poste
+       WHERE coordenadas IS NOT NULL
+         AND split_part(coordenadas, ',', 1)::numeric BETWEEN $1 AND $2
+         AND split_part(coordenadas, ',', 2)::numeric BETWEEN $3 AND $4
+       LIMIT 5000;`,
+      [south, north, west, east]
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error('Erro ao buscar empresas:', err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
