@@ -1,15 +1,15 @@
 // script.js – mapa otimizado com cache IndexedDB, cache em memória,
-// BBOX-based cache key, clusterização Canvas, debounce e handlers de UI.
+// BBOX-based cache key, clusterização Canvas com carregamento chunked, debounce e handlers de UI.
 
 const dbName = "PostesCache";
 const storeName = "PostesPorBbox";
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutos
-const MIN_ZOOM_TO_LOAD = 12; // zoom mínimo para carregar pontos
+const MIN_ZOOM_TO_LOAD = 12;    // zoom mínimo para mostrar marcadores
 
 let db;
 const memoryCache = new Map();
 
-// 1) Singleton IndexedDB
+// 1) Singleton IndexedDB (abre somente uma vez)
 const getDB = (() => {
   let promise;
   return () => {
@@ -18,9 +18,7 @@ const getDB = (() => {
         const req = indexedDB.open(dbName, 1);
         req.onerror = () => reject(req.error);
         req.onsuccess = () => resolve(req.result);
-        req.onupgradeneeded = e => {
-          e.target.result.createObjectStore(storeName, { keyPath: "key" });
-        };
+        req.onupgradeneeded = e => e.target.result.createObjectStore(storeName, { keyPath: "key" });
       });
     }
     return promise;
@@ -33,7 +31,6 @@ async function salvarCache(key, dados) {
   const tx = database.transaction(storeName, "readwrite");
   tx.objectStore(storeName).put({ key, timestamp: Date.now(), dados });
 }
-
 async function obterCache(key) {
   const database = await getDB();
   return new Promise(resolve => {
@@ -47,14 +44,14 @@ async function obterCache(key) {
   });
 }
 
-// 3) Chave de cache a partir da BBOX (latitude/longitude arredondados)
+// 3) Chave de cache a partir da BBOX (lat/lon arredondados)
 function boundsToKey(bounds, precision = 3) {
   const sw = bounds.getSouthWest();
   const ne = bounds.getNorthEast();
   return `${sw.lat.toFixed(precision)},${sw.lng.toFixed(precision)}|${ne.lat.toFixed(precision)},${ne.lng.toFixed(precision)}`;
 }
 
-// 4) Busca dados via parâmetros BBOX
+// 4) Busca dados no backend via BBOX
 async function fetchDados(bounds) {
   const sw = bounds.getSouthWest();
   const ne = bounds.getNorthEast();
@@ -77,34 +74,39 @@ async function getDados(bounds) {
   return dados;
 }
 
-// 6) Ícone dos marcadores
+// 6) Ícone padrão dos marcadores
 const icone = L.divIcon({
   html: `<div style="width:14px;height:14px;border-radius:50%;background:green;border:2px solid white;"></div>`,
   iconSize: [16, 16],
   iconAnchor: [8, 8]
 });
 
-// 7) Inicializa mapa + clusterização
+// 7) Inicialização do mapa + clusterização com chunkedLoading
 (async () => {
   await getDB();
 
-  window.map = L.map("map").setView([-23.2, -45.9], MIN_ZOOM_TO_LOAD);
+  const map = L.map("map").setView([-23.2, -45.9], MIN_ZOOM_TO_LOAD);
+  window.map = map;
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
-  window.markers = L.markerClusterGroup({
-    spiderfyOnMaxZoom: true,
-    showCoverageOnHover: false,
-    zoomToBoundsOnClick: false,
-    maxClusterRadius: 60,
+  const markers = L.markerClusterGroup({
+    chunkedLoading: true,
+    chunkProgressive: true,
+    chunkInterval: 200,
+    chunkDelay: 0,
+    chunkOpacity: 0.5,
+    spiderfyOnMaxZoom: false,
     disableClusteringAtZoom: 17,
     renderer: L.canvas()
   });
+  window.markers = markers;
   map.addLayer(markers);
 
   let debounceTimer;
-  map.on("moveend", () => {
+  let lastKey = null;
+  map.on("moveend zoomend", () => {
     clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(loadPoints, 500); // debounce 500ms
+    debounceTimer = setTimeout(loadPoints, 500);
   });
 
   async function loadPoints() {
@@ -113,31 +115,28 @@ const icone = L.divIcon({
       return;
     }
 
+    const bounds = map.getBounds();
+    const key = boundsToKey(bounds);
+    if (key === lastKey) return;
+    lastKey = key;
+
     const spinner = document.getElementById("carregando");
     if (spinner) spinner.style.display = "flex";
 
     try {
-      const dados = await getDados(map.getBounds());
+      const dados = await getDados(bounds);
       markers.clearLayers();
 
       const pontos = [];
-      dados.forEach(item => {
-        let lat, lon;
-        if (item.lat !== undefined && item.lon !== undefined) {
-          lat = item.lat;
-          lon = item.lon;
-        } else if (item.coordenadas) {
-          const parts = item.coordenadas.split(",");
-          lat = parseFloat(parts[0]);
-          lon = parseFloat(parts[1]);
-        }
+      for (const item of dados) {
+        const lat = ('lat' in item) ? item.lat : parseFloat(item.coordenadas?.split(',')[0]);
+        const lon = ('lon' in item) ? item.lon : parseFloat(item.coordenadas?.split(',')[1]);
         if (!isNaN(lat) && !isNaN(lon)) {
           const m = L.marker([lat, lon], { icon: icone });
           m.bindPopup(`<b>ID:</b> ${item.id_poste}`);
           pontos.push(m);
         }
-      });
-
+      }
       markers.addLayers(pontos);
     } catch (err) {
       console.error("Erro ao carregar postes:", err);
@@ -150,7 +149,7 @@ const icone = L.divIcon({
   loadPoints();
 })();
 
-// 8) Handlers globais UI
+// 8) Handlers globais para UI
 function localizarUsuario() {
   if (!navigator.geolocation) return alert("Geolocalização não suportada.");
   navigator.geolocation.getCurrentPosition(
@@ -163,15 +162,15 @@ function localizarUsuario() {
     () => alert("Não foi possível obter localização.")
   );
 }
-function buscarID()           { console.warn("buscarID não implementado"); }
-function buscarCoordenada()   { console.warn("buscarCoordenada não implementado"); }
-function filtrarEmpresa()     { console.warn("filtrarEmpresa não implementado"); }
-function buscarPorRua()       { console.warn("buscarPorRua não implementado"); }
-function consultarIDsEmMassa(){ console.warn("consultarIDsEmMassa não implementado"); }
-function gerarExcel()         { console.warn("gerarExcel não implementado"); }
-function limparTudo()         { console.warn("limparTudo não implementado"); }
-function gerarPDFComMapa()    { console.warn("gerarPDFComMapa não implementado"); }
-function resetarMapa()        { console.warn("resetarMapa não implementado"); }
+function buscarID() { console.warn("buscarID não implementado"); }
+function buscarCoordenada() { console.warn("buscarCoordenada não implementado"); }
+function filtrarEmpresa() { console.warn("filtrarEmpresa não implementado"); }
+function buscarPorRua() { console.warn("buscarPorRua não implementado"); }
+function consultarIDsEmMassa() { console.warn("consultarIDsEmMassa não implementado"); }
+function gerarExcel() { console.warn("gerarExcel não implementado"); }
+function limparTudo() { console.warn("limparTudo não implementado"); }
+function gerarPDFComMapa() { console.warn("gerarPDFComMapa não implementado"); }
+function resetarMapa() { console.warn("resetarMapa não implementado"); }
 
 // 9) Eventos do painel de busca
 window.addEventListener("DOMContentLoaded", () => {
@@ -179,14 +178,3 @@ window.addEventListener("DOMContentLoaded", () => {
     const p = document.getElementById("painelBusca");
     p.style.display = p.style.display === "none" ? "block" : "none";
   });
-  document.getElementById("localizacaoUsuario").addEventListener("click", localizarUsuario);
-  document.querySelector('[data-action="buscar-id"]').addEventListener("click", buscarID);
-  document.querySelector('[data-action="buscar-coord"]').addEventListener("click", buscarCoordenada);
-  document.querySelector('[data-action="filtrar-empresa"]').addEventListener("click", filtrarEmpresa);
-  document.querySelector('[data-action="buscar-rua"]').addEventListener("click", buscarPorRua);
-  document.querySelector('[data-action="verificar-ids"]').addEventListener("click", consultarIDsEmMassa);
-  document.getElementById("btnGerarExcel").addEventListener("click", gerarExcel);
-  document.querySelector('[data-action="limpar"]').addEventListener("click", limparTudo);
-  document.querySelector('[data-action="gerar-pdf"]').addEventListener("click", gerarPDFComMapa);
-  document.querySelector('[data-action="resetar"]').addEventListener("click", resetarMapa);
-});
