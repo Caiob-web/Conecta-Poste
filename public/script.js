@@ -189,3 +189,71 @@ window.addEventListener('DOMContentLoaded', () => {
     // Lógica de geração de Excel igual ao Glitch
   });
 });
+map.on("moveend", () => {
+  const bounds = map.getBounds();
+  const north = bounds.getNorth();
+  const south = bounds.getSouth();
+  const east = bounds.getEast();
+  const west = bounds.getWest();
+
+  fetch(`/api/empresas?north=${north}&south=${south}&east=${east}&west=${west}`)
+    .then(res => res.json())
+    .then(data => {
+      markers.clearLayers();
+      empresasContagem = {};
+      todosPostes.length = 0;
+
+      const agrupado = {};
+      data.forEach((poste) => {
+        if (!poste.lat || !poste.lon) return;
+        const id = poste.id_poste;
+        if (!agrupado[id]) {
+          agrupado[id] = {
+            id_poste: id,
+            lat: poste.lat,
+            lon: poste.lon,
+            empresas: new Set(),
+            nome_municipio: poste.nome_municipio || ""
+          };
+        }
+        if (poste.empresa && poste.empresa.toUpperCase() !== "DISPONÍVEL") {
+          agrupado[id].empresas.add(poste.empresa);
+        }
+      });
+
+      const markerList = [];
+      Object.values(agrupado).forEach((poste) => {
+        const empresasArray = [...poste.empresas];
+        empresasArray.forEach((e) => {
+          empresasContagem[e] = (empresasContagem[e] || 0) + 1;
+        });
+
+        const qtdEmpresas = empresasArray.length;
+        const cor = qtdEmpresas >= 5 ? "red" : "green";
+        const icone = L.divIcon({
+          html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
+          iconSize: [16, 16],
+          iconAnchor: [8, 8]
+        });
+
+        const popupContent = `
+<b>ID do Poste:</b> ${poste.id_poste}<br>
+<b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br>
+<b>Empresas:</b><ul>${empresasArray.map(e => `<li>${e}</li>`).join('')}</ul>`;
+        const tooltipText = `ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`;
+
+        const m = L.marker([poste.lat, poste.lon], { icon: icone })
+          .bindPopup(popupContent)
+          .bindTooltip(tooltipText, { direction: 'top' });
+        markerList.push(m);
+        todosPostes.push({ ...poste, empresas: empresasArray });
+      });
+
+      markers.addLayers(markerList);
+      preencherAutocomplete();
+    })
+    .catch((err) => {
+      console.error('Erro ao carregar dados de empresas:', err);
+      alert('Erro ao carregar dados das empresas no mapa.');
+    });
+});
