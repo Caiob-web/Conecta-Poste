@@ -23,58 +23,27 @@ const pool = new Pool({
 });
 
 // ==========================================
-// 3. CACHE LOCAL PARA OTIMIZAR USO DO NEON
+// 3. API POR BBOX LIMITADA
 // ==========================================
-let cachePostes = null;
-let cacheTimestamp = 0;
-const CACHE_TTL = 10 * 60 * 1000;
-
-const express = require("express");
-const cors = require("cors");
-const path = require("path");
-const { Pool } = require("pg");
-const ExcelJS = require("exceljs");
-
-const app = express();
-const port = process.env.PORT || 3000;
-
-// ==========================================
-// 1. MIDDLEWARES
-// ==========================================
-app.use(cors({ origin: "*" }));
-app.use(express.json());
-app.use(express.static(path.join(__dirname, "public")));
-
-// ==========================================
-// 2. CONEXÃO COM O NEON
-// ==========================================
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
-
-// ==========================================
-// 3. CACHE LOCAL PARA OTIMIZAR USO DO NEON
-// ==========================================
-let cachePostes = null;
-let cacheTimestamp = 0;
-const CACHE_TTL = 10 * 60 * 1000;
-
 app.get("/api/postes", async (req, res) => {
-  const now = Date.now();
-  if (cachePostes && now - cacheTimestamp < CACHE_TTL) {
-    return res.json(cachePostes);
+  const { north, south, east, west } = req.query;
+  if (!north || !south || !east || !west) {
+    return res.status(400).json({ error: "Parâmetros BBOX incompletos" });
   }
 
   try {
-    const { rows } = await pool.query(`
-      SELECT id_poste, coordenadas, NULL AS empresa
+    const { rows } = await pool.query(
+      `
+      SELECT id_poste, coordenadas
       FROM vw_postes_com_coord
-      WHERE coordenadas IS NOT NULL AND TRIM(coordenadas) <> ''
-    `);
-
-    cachePostes = rows;
-    cacheTimestamp = now;
+      WHERE
+        coordenadas IS NOT NULL AND TRIM(coordenadas) <> ''
+        AND split_part(coordenadas, ',', 1)::numeric BETWEEN $1 AND $2
+        AND split_part(coordenadas, ',', 2)::numeric BETWEEN $3 AND $4
+      LIMIT 1000
+      `,
+      [south, north, west, east]
+    );
     res.json(rows);
   } catch (err) {
     console.error("Erro ao buscar postes:", err);
