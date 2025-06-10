@@ -4,8 +4,20 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mapa de Postes</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+    <!-- Leaflet CSS -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet/dist/leaflet.css"
+      integrity="sha384-AaZ4U+6w1ZL5TfqBwR5oPgUbS6MfBHnrl0FrZcOeen3D1D9mX0hY8+9qZp5ZjZNE"
+      crossorigin=""
+    />
+    <!-- MarkerCluster CSS -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"
+      integrity="sha384-KyZXEAg3QhqLMpG8r+Knujsl5+G5r5cE6R9zQ1FQgwI4dGk5RxHcxYKaxTQYHhoa"
+      crossorigin=""
+    />
     <style>
       html,
       body {
@@ -15,12 +27,24 @@
         overflow: hidden;
         font-family: sans-serif;
       }
-
       #map {
         height: 100vh;
         width: 100vw;
       }
-
+      .botao-topo {
+        position: absolute;
+        right: 10px;
+        z-index: 1001;
+        padding: 5px 10px;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        box-shadow: 0 0 6px rgba(0, 0, 0, 0.2);
+        font-size: 13px;
+        background: white;
+      }
+      #togglePainel { top: 10px; }
+      #localizacaoUsuario { top: 50px; }
       .painel-busca {
         position: absolute;
         top: 100px;
@@ -32,7 +56,6 @@
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
         max-width: 260px;
       }
-
       .painel-busca input,
       .painel-busca textarea {
         margin-bottom: 4px;
@@ -41,13 +64,17 @@
         font-size: 13px;
         box-sizing: border-box;
       }
-
-      .painel-busca button {
-        margin: 3px 3px 0 0;
-        padding: 5px 8px;
-        font-size: 12px;
+      .painel-busca .botoes {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
       }
-
+      .painel-busca button {
+        flex: 1 1 48%;
+        padding: 5px;
+        font-size: 12px;
+        cursor: pointer;
+      }
       .legenda {
         position: absolute;
         bottom: 10px;
@@ -58,13 +85,11 @@
         font-size: 14px;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
       }
-
       .legenda-item {
         display: flex;
         align-items: center;
         margin-bottom: 5px;
       }
-
       .bolinha {
         width: 12px;
         height: 12px;
@@ -72,27 +97,6 @@
         margin-right: 8px;
         border: 1px solid #555;
       }
-
-      .botao-topo {
-        position: absolute;
-        right: 10px;
-        z-index: 1001;
-        padding: 5px 10px;
-        border-radius: 6px;
-        border: none;
-        cursor: pointer;
-        box-shadow: 0 0 6px rgba(0, 0, 0, 0.2);
-        font-size: 13px;
-      }
-
-      #togglePainel {
-        top: 10px;
-      }
-
-      #localizacaoUsuario {
-        top: 50px;
-      }
-
       #widget-clima {
         position: fixed;
         bottom: 10px;
@@ -107,7 +111,6 @@
         max-width: 260px;
         line-height: 1.4;
       }
-
       #widget-clima img {
         height: 24px;
         width: 24px;
@@ -118,50 +121,87 @@
   </head>
 
   <body>
-    <button id="togglePainel" class="botao-topo">🙈 Esconder Painel</button>
-    <button id="localizacaoUsuario" class="botao-topo">📍 Minha Localização</button>
+    <!-- Botões de controle -->
+    <button id="togglePainel" class="botao-topo" aria-label="Alternar painel de busca">🙈 Painel</button>
+    <button id="localizacaoUsuario" class="botao-topo" aria-label="Minha localização">📍 Aqui</button>
 
+    <!-- Painel de busca e filtros -->
     <div class="painel-busca" id="painelBusca">
-      <input type="text" id="busca-id" placeholder="Buscar por ID do poste" />
-      <input type="text" id="busca-coord" placeholder="Latitude,Longitude" />
-      <input type="text" id="busca-rua" placeholder="Buscar por rua" list="sugestoes-rua" />
+      <input id="busca-id" type="text" placeholder="Buscar por ID do poste" aria-label="Buscar por ID do poste" />
+      <input id="busca-coord" type="text" placeholder="Latitude,Longitude" aria-label="Buscar por coordenada" />
+      <input id="busca-rua" type="text" placeholder="Buscar por rua" list="sugestoes-rua" aria-label="Buscar por rua" />
       <datalist id="sugestoes-rua"></datalist>
-      <input type="text" id="filtro-empresa" list="lista-empresas" placeholder="Filtrar por empresa" />
+      <input id="filtro-empresa" type="text" placeholder="Filtrar por empresa" list="lista-empresas" aria-label="Filtrar por empresa" />
       <datalist id="lista-empresas"></datalist>
-      <textarea id="ids-multiplos" rows="3" placeholder="Cole vários IDs separados por vírgula ou quebra de linha"></textarea>
-      <div style="display: flex; flex-wrap: wrap">
-        <button onclick="buscarID()">🔍 ID</button>
-        <button onclick="buscarCoordenada()">📍 Coordenada</button>
-        <button onclick="filtrarEmpresa()">🏢 Filtrar</button>
-        <button onclick="buscarPorRua()">🏠 Rua</button>
-        <button onclick="consultarIDsEmMassa()">🔎 Verificar IDs</button>
-        <button id="btnGerarExcel">📊 Excel</button>
-        <button onclick="limparTudo()">🧹 Limpar</button>
-        <button onclick="gerarPDFComMapa()">📄 PDF</button>
-        <button onclick="resetarMapa()">🔄 Tudo</button>
+      <textarea id="ids-multiplos" rows="3" placeholder="Cole IDs separados por vírgula ou linha" aria-label="IDs múltiplos"></textarea>
+      <div class="botoes">
+        <button type="button" data-action="buscar-id">🔍 ID</button>
+        <button type="button" data-action="buscar-coord">📍 Coordenada</button>
+        <button type="button" data-action="filtrar-empresa">🏢 Filtrar</button>
+        <button type="button" data-action="buscar-rua">🏠 Rua</button>
+        <button type="button" data-action="verificar-ids">🔎 IDs</button>
+        <button type="button" id="btnGerarExcel">📊 Excel</button>
+        <button type="button" data-action="limpar">🧹 Limpar</button>
+        <button type="button" data-action="gerar-pdf">📄 PDF</button>
+        <button type="button" data-action="resetar">🔄 Tudo</button>
       </div>
     </div>
 
+    <!-- Legenda de cores -->
     <div class="legenda">
       <div class="legenda-item">
         <div class="bolinha" style="background: green"></div> Disponível
       </div>
       <div class="legenda-item">
-        <div class="bolinha" style="background: red"></div> Com 5+ empresas (futuro)
+        <div class="bolinha" style="background: red"></div> 5+ empresas
       </div>
     </div>
 
+    <!-- Mapa -->
     <div id="map"></div>
 
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
-    <script src="script.js"></script>
-
+    <!-- Widget de clima e hora -->
     <div id="widget-clima">
       <div id="hora">🕒 Carregando hora...</div>
       <div id="tempo">⛅ Carregando previsão do tempo...</div>
     </div>
 
+    <!-- Scripts Leaflet e dependências -->
+    <script
+      src="https://unpkg.com/leaflet/dist/leaflet.js"
+      integrity="sha384-uMK8gqvXnG8C3cV9gLZNNcEisZ/4+VvERtFh6E3n+HIDBEzM2jDQuH/5Zp5RoboX"
+      crossorigin=""
+    ></script>
+    <script
+      src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"
+      integrity="sha384-D4aO0zDdq9vE+FVlW/0q3L1OPZ6cYQK4yFzQ6nmDvH6x4Z/8bF5pY3LqF5bR9w6Y"
+      crossorigin=""
+    ></script>
+
+    <!-- Script principal do mapa e funções -->
+    <script src="script.js"></script>
+
+    <!-- Inicializa interações de UI -->
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('togglePainel').addEventListener('click', () => {
+          const painel = document.getElementById('painelBusca');
+          painel.style.display = painel.style.display === 'none' ? 'block' : 'none';
+        });
+        document.getElementById('localizacaoUsuario').addEventListener('click', localizarUsuario);
+        document.querySelector('[data-action="buscar-id"]').addEventListener('click', buscarID);
+        document.querySelector('[data-action="buscar-coord"]').addEventListener('click', buscarCoordenada);
+        document.querySelector('[data-action="filtrar-empresa"]').addEventListener('click', filtrarEmpresa);
+        document.querySelector('[data-action="buscar-rua"]').addEventListener('click', buscarPorRua);
+        document.querySelector('[data-action="verificar-ids"]').addEventListener('click', consultarIDsEmMassa);
+        document.getElementById('btnGerarExcel').addEventListener('click', gerarExcel);
+        document.querySelector('[data-action="limpar"]').addEventListener('click', limparTudo);
+        document.querySelector('[data-action="gerar-pdf"]').addEventListener('click', gerarPDFComMapa);
+        document.querySelector('[data-action="resetar"]').addEventListener('click', resetarMapa);
+      });
+    </script>
+
+    <!-- jsPDF e Leaflet Image para exportar PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://unpkg.com/leaflet-image/leaflet-image.js"></script>
   </body>
