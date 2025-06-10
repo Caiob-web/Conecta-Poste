@@ -1,100 +1,106 @@
-// script.js - otimizando mapa com cache IndexedDB + carregamento completo
+// script.js – Mapa otimizado com cache em IndexedDB, cache em memória, geohash,
+// clusterização com Canvas, debounce e payload reduzido.
 
-// 1. Inicializa o IndexedDB
+// **Pré-requisitos**: instale a lib de geohash no seu projeto:
+//   npm install ngeohash
+// e certifique-se de que seu bundler suporte ES Modules ou inclua via CDN.
+
+import ngeohash from 'ngeohash';
+
+const dbName     = "PostesCache";
+const storeName  = "PostesPorTile";
+const CACHE_TTL  = 10 * 60 * 1000; // 10 minutos
+
 let db;
-const dbName = "PostesCache";
-const storeName = "PostesPorBbox";
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutos
+const memoryCache = new Map();
 
-const openDB = () => {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(dbName, 1);
-    request.onerror = () => reject("Erro ao abrir IndexedDB");
-    request.onsuccess = () => {
-      db = request.result;
-      resolve();
-    };
-    request.onupgradeneeded = (e) => {
-      db = e.target.result;
-      db.createObjectStore(storeName, { keyPath: "key" });
-    };
-  });
-};
+// 1. Singleton para abrir o IndexedDB apenas uma vez
+const getDB = (() => {
+  let promise;
+  return () => {
+    if (!promise) {
+      promise = new Promise((resolve, reject) => {
+        const req = indexedDB.open(dbName, 1);
+        req.onerror = () => reject(req.error);
+        req.onsuccess = () => {
+          db = req.result;
+          resolve(db);
+        };
+        req.onupgradeneeded = e => {
+          const _db = e.target.result;
+          _db.createObjectStore(storeName, { keyPath: "key" });
+        };
+      });
+    }
+    return promise;
+  };
+})();
 
-const salvarCache = (key, data) => {
-  const tx = db.transaction(storeName, "readwrite");
-  const store = tx.objectStore(storeName);
-  store.put({ key, timestamp: Date.now(), dados: data });
-};
+// 2. Funções de cache no IndexedDB
+async function salvarCache(key, dados) {
+  const database = await getDB();
+  const tx = database.transaction(storeName, "readwrite");
+  tx.objectStore(storeName).put({ key, timestamp: Date.now(), dados });
+}
 
-const obterCache = (key) => {
-  return new Promise((resolve) => {
-    const tx = db.transaction(storeName, "readonly");
-    const store = tx.objectStore(storeName);
-    const req = store.get(key);
+async function obterCache(key) {
+  const database = await getDB();
+  return new Promise(resolve => {
+    const tx  = database.transaction(storeName, "readonly");
+    const req = tx.objectStore(storeName).get(key);
     req.onsuccess = () => {
-      const resultado = req.result;
-      if (resultado && Date.now() - resultado.timestamp < CACHE_TTL) {
-        resolve(resultado.dados);
+      const res = req.result;
+      if (res && Date.now() - res.timestamp < CACHE_TTL) {
+        resolve(res.dados);
       } else {
         resolve(null);
       }
     };
     req.onerror = () => resolve(null);
   });
-};
+}
 
-// 2. Utiliza o cache e a BBOX atual para buscar postes
-const carregarPostesPorBbox = async (map, markers, todosPostes) => {
-  const bounds = map.getBounds();
-  const bboxKey = `${bounds.getSouthWest().lat.toFixed(4)},${bounds.getSouthWest().lng.toFixed(4)}|${bounds.getNorthEast().lat.toFixed(4)},${bounds.getNorthEast().lng.toFixed(4)}`;
+// 3. Gera chave fixa de tile via geohash (precisão 6)
+function bboxToGeohash(bounds, precision = 6) {
+  const sw = bounds.getSouthWest();
+  const ne = bounds.getNorthEast();
+  const lat = (sw.lat + ne.lat) / 2;
+  const lng = (sw.lng + ne.lng) / 2;
+  return ngeohash.encode(lat, lng, precision);
+}
 
-  const spinner = document.getElementById("carregando");
-  if (spinner) spinner.style.display = "flex";
+// 4. Busca dados da API (assumindo JSON [{id_poste, lat, lon}, …])
+async function fetchDados(key) {
+  const res = await fetch(`/api/postes?tile=${key}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
 
-  await openDB();
-  let dados = await obterCache(bboxKey);
-
+// 5. Cache em memória + IndexedDB
+async function getDadosParaTile(key) {
+  if (memoryCache.has(key)) {
+    return memoryCache.get(key);
+  }
+  let dados = await obterCache(key);
   if (!dados) {
-    const url = `/api/postes?bbox=${bboxKey}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Erro HTTP ${res.status}`);
-    dados = await res.json();
-    salvarCache(bboxKey, dados);
+    dados = await fetchDados(key);
+    await salvarCache(key, dados);
   }
+  memoryCache.set(key, dados);
+  return dados;
+}
 
-  markers.clearLayers();
-  todosPostes.length = 0;
+// 6. Ícone único (pode parametrizar cor futuramente)
+const icone = L.divIcon({
+  html: `<div style="width:14px;height:14px;border-radius:50%;
+                   background:green;border:2px solid white;"></div>`,
+  iconSize: [16, 16],
+  iconAnchor: [8, 8]
+});
 
-  const agrupado = {};
-  dados.forEach((poste) => {
-    if (!poste.coordenadas) return;
-    const [lat, lon] = poste.coordenadas.split(",").map(Number);
-    if (isNaN(lat) || isNaN(lon)) return;
-    agrupado[poste.id_poste] = { id_poste: poste.id_poste, coordenadas: poste.coordenadas, lat, lon };
-  });
-
-  for (const poste of Object.values(agrupado)) {
-    const cor = "green"; // Pode mudar para vermelho no futuro baseado nas empresas
-    const icone = L.divIcon({
-      html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
-      iconSize: [16, 16],
-      iconAnchor: [8, 8]
-    });
-    const marker = L.marker([poste.lat, poste.lon], { icon: icone });
-    marker.bindPopup(`<b>ID:</b> ${poste.id_poste}`);
-    marker.bindTooltip(`ID: ${poste.id_poste}`, { direction: "top" });
-    markers.addLayer(marker);
-    todosPostes.push(poste);
-  }
-
-  map.addLayer(markers);
-  if (spinner) spinner.classList.add("esconder");
-};
-
-// 3. Inicializa o mapa com cluster e eventos de movimentação
+// 7. Inicialização do mapa e lógica de carregamento
 (async () => {
-  await openDB();
+  await getDB();  // abre o IndexedDB
 
   const map = L.map("map").setView([-23.2, -45.9], 12);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
@@ -105,10 +111,39 @@ const carregarPostesPorBbox = async (map, markers, todosPostes) => {
     zoomToBoundsOnClick: false,
     maxClusterRadius: 60,
     disableClusteringAtZoom: 17,
+    renderer: L.canvas()  // Canvas para performance
+  });
+  map.addLayer(markers);
+
+  let debounceTimeout;
+  map.on("moveend", () => {
+    clearTimeout(debounceTimeout);
+    debounceTimeout = setTimeout(carregarPostesPorTile, 200);
   });
 
-  const todosPostes = [];
-  map.on("moveend", () => carregarPostesPorBbox(map, markers, todosPostes));
+  async function carregarPostesPorTile() {
+    const bounds = map.getBounds();
+    const key    = bboxToGeohash(bounds, 6);
+    const spinner = document.getElementById("carregando");
+    if (spinner) spinner.style.display = "flex";
 
-  carregarPostesPorBbox(map, markers, todosPostes);
+    try {
+      const dados = await getDadosParaTile(key);
+      markers.clearLayers();
+      const camada = dados.map(({ id_poste, lat, lon }) => {
+        const m = L.marker([lat, lon], { icon: icone });
+        m.bindPopup(`<b>ID:</b> ${id_poste}`);
+        m.bindTooltip(`ID: ${id_poste}`, { direction: "top" });
+        return m;
+      });
+      markers.addLayers(camada);
+    } catch (err) {
+      console.error("Erro ao carregar postes:", err);
+    } finally {
+      if (spinner) spinner.style.display = "none";
+    }
+  }
+
+  // primeiro carregamento
+  carregarPostesPorTile();
 })();
