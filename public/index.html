@@ -4,20 +4,20 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mapa de Postes</title>
+
     <!-- Leaflet CSS -->
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet/dist/leaflet.css"
-      integrity="sha384-AaZ4U+6w1ZL5TfqBwR5oPgUbS6MfBHnrl0FrZcOeen3D1D9mX0hY8+9qZp5ZjZNE"
       crossorigin=""
     />
     <!-- MarkerCluster CSS -->
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"
-      integrity="sha384-KyZXEAg3QhqLMpG8r+Knujsl5+G5r5cE6R9zQ1FQgwI4dGk5RxHcxYKaxTQYHhoa"
       crossorigin=""
     />
+
     <style>
       html,
       body {
@@ -121,19 +121,19 @@
   </head>
 
   <body>
-    <!-- Botões de controle -->
-    <button id="togglePainel" class="botao-topo" aria-label="Alternar painel de busca">🙈 Painel</button>
+    <!-- Botões de topo -->
+    <button id="togglePainel" class="botao-topo" aria-label="Alternar painel">🙈 Painel</button>
     <button id="localizacaoUsuario" class="botao-topo" aria-label="Minha localização">📍 Aqui</button>
 
     <!-- Painel de busca e filtros -->
     <div class="painel-busca" id="painelBusca">
-      <input id="busca-id" type="text" placeholder="Buscar por ID do poste" aria-label="Buscar por ID do poste" />
-      <input id="busca-coord" type="text" placeholder="Latitude,Longitude" aria-label="Buscar por coordenada" />
-      <input id="busca-rua" type="text" placeholder="Buscar por rua" list="sugestoes-rua" aria-label="Buscar por rua" />
+      <input id="busca-id"       type="text" placeholder="Buscar por ID do poste" />
+      <input id="busca-coord"    type="text" placeholder="Latitude,Longitude" />
+      <input id="busca-rua"      type="text" placeholder="Buscar por rua" list="sugestoes-rua" />
       <datalist id="sugestoes-rua"></datalist>
-      <input id="filtro-empresa" type="text" placeholder="Filtrar por empresa" list="lista-empresas" aria-label="Filtrar por empresa" />
+      <input id="filtro-empresa" type="text" placeholder="Filtrar por empresa" list="lista-empresas" />
       <datalist id="lista-empresas"></datalist>
-      <textarea id="ids-multiplos" rows="3" placeholder="Cole IDs separados por vírgula ou linha" aria-label="IDs múltiplos"></textarea>
+      <textarea id="ids-multiplos" rows="3" placeholder="Cole IDs separados por vírgula ou linha"></textarea>
       <div class="botoes">
         <button type="button" data-action="buscar-id">🔍 ID</button>
         <button type="button" data-action="buscar-coord">📍 Coordenada</button>
@@ -147,7 +147,7 @@
       </div>
     </div>
 
-    <!-- Legenda de cores -->
+    <!-- Legenda -->
     <div class="legenda">
       <div class="legenda-item">
         <div class="bolinha" style="background: green"></div> Disponível
@@ -160,51 +160,71 @@
     <!-- Mapa -->
     <div id="map"></div>
 
-    <!-- Widget de clima e hora -->
+    <!-- Widget clima/hora -->
     <div id="widget-clima">
       <div id="hora">🕒 Carregando hora...</div>
       <div id="tempo">⛅ Carregando previsão do tempo...</div>
     </div>
 
-    <!-- Scripts Leaflet e dependências -->
-    <script
-      src="https://unpkg.com/leaflet/dist/leaflet.js"
-      integrity="sha384-uMK8gqvXnG8C3cV9gLZNNcEisZ/4+VvERtFh6E3n+HIDBEzM2jDQuH/5Zp5RoboX"
-      crossorigin=""
-    ></script>
-    <script
-      src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"
-      integrity="sha384-D4aO0zDdq9vE+FVlW/0q3L1OPZ6cYQK4yFzQ6nmDvH6x4Z/8bF5pY3LqF5bR9w6Y"
-      crossorigin=""
-    ></script>
-    <!-- em <head> ou logo antes de script.js -->
+    <!-- 1) Dependências de terceiros -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
     <script src="https://unpkg.com/ngeohash/browser.js"></script>
 
-
-    <!-- Script principal do mapa e funções -->
+    <!-- 2) Seu script principal -->
     <script src="script.js"></script>
 
-    <!-- Inicializa interações de UI -->
+    <!-- 3) Definição global de localizarUsuario -->
+    <script>
+      function localizarUsuario() {
+        if (!navigator.geolocation) {
+          return alert('Geolocalização não suportada neste navegador.');
+        }
+        navigator.geolocation.getCurrentPosition(
+          ({ coords }) => {
+            map.setView([coords.latitude, coords.longitude], 16, { animate: true });
+            L.marker([coords.latitude, coords.longitude])
+              .addTo(markers)
+              .bindPopup('Você está aqui')
+              .openPopup();
+          },
+          () => alert('Não foi possível obter sua localização.')
+        );
+      }
+    </script>
+
+    <!-- 4) Registro de event listeners -->
     <script>
       document.addEventListener('DOMContentLoaded', () => {
-        document.getElementById('togglePainel').addEventListener('click', () => {
-          const painel = document.getElementById('painelBusca');
-          painel.style.display = painel.style.display === 'none' ? 'block' : 'none';
+        document.getElementById('togglePainel')
+                .addEventListener('click', () => {
+          const p = document.getElementById('painelBusca');
+          p.style.display = p.style.display === 'none' ? 'block' : 'none';
         });
-        document.getElementById('localizacaoUsuario').addEventListener('click', localizarUsuario);
-        document.querySelector('[data-action="buscar-id"]').addEventListener('click', buscarID);
-        document.querySelector('[data-action="buscar-coord"]').addEventListener('click', buscarCoordenada);
-        document.querySelector('[data-action="filtrar-empresa"]').addEventListener('click', filtrarEmpresa);
-        document.querySelector('[data-action="buscar-rua"]').addEventListener('click', buscarPorRua);
-        document.querySelector('[data-action="verificar-ids"]').addEventListener('click', consultarIDsEmMassa);
-        document.getElementById('btnGerarExcel').addEventListener('click', gerarExcel);
-        document.querySelector('[data-action="limpar"]').addEventListener('click', limparTudo);
-        document.querySelector('[data-action="gerar-pdf"]').addEventListener('click', gerarPDFComMapa);
-        document.querySelector('[data-action="resetar"]').addEventListener('click', resetarMapa);
+        document.getElementById('localizacaoUsuario')
+                .addEventListener('click', localizarUsuario);
+        document.querySelector('[data-action="buscar-id"]')
+                .addEventListener('click', buscarID);
+        document.querySelector('[data-action="buscar-coord"]')
+                .addEventListener('click', buscarCoordenada);
+        document.querySelector('[data-action="filtrar-empresa"]')
+                .addEventListener('click', filtrarEmpresa);
+        document.querySelector('[data-action="buscar-rua"]')
+                .addEventListener('click', buscarPorRua);
+        document.querySelector('[data-action="verificar-ids"]')
+                .addEventListener('click', consultarIDsEmMassa);
+        document.getElementById('btnGerarExcel')
+                .addEventListener('click', gerarExcel);
+        document.querySelector('[data-action="limpar"]')
+                .addEventListener('click', limparTudo);
+        document.querySelector('[data-action="gerar-pdf"]')
+                .addEventListener('click', gerarPDFComMapa);
+        document.querySelector('[data-action="resetar"]')
+                .addEventListener('click', resetarMapa);
       });
     </script>
 
-    <!-- jsPDF e Leaflet Image para exportar PDF -->
+    <!-- 5) jsPDF e Leaflet Image -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://unpkg.com/leaflet-image/leaflet-image.js"></script>
   </body>
