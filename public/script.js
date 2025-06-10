@@ -112,11 +112,25 @@ const icone = L.divIcon({
     try {
       const dados = await getDados(map.getBounds());
       markers.clearLayers();
-      const pontos = dados.map(({ id_poste, lat, lon }) => {
-        const m = L.marker([lat, lon], { icon: icone });
-        m.bindPopup(`<b>ID:</b> ${id_poste}`);
-        return m;
-      });
+
+      const pontos = dados.reduce((acc, item) => {
+        let lat, lon;
+        if ('lat' in item && 'lon' in item) {
+          lat = item.lat;
+          lon = item.lon;
+        } else if (item.coordenadas) {
+          const parts = item.coordenadas.split(",");
+          lat = parseFloat(parts[0]);
+          lon = parseFloat(parts[1]);
+        }
+        if (!isNaN(lat) && !isNaN(lon)) {
+          const m = L.marker([lat, lon], { icon: icone });
+          m.bindPopup(`<b>ID:</b> ${item.id_poste}`);
+          acc.push(m);
+        }
+        return acc;
+      }, []);
+
       markers.addLayers(pontos);
     } catch (err) {
       console.error("Erro ao carregar postes:", err);
@@ -129,11 +143,9 @@ const icone = L.divIcon({
   loadPoints();
 })();
 
-// 8) Handlers globais para botões do painel
+// 8) Handlers globais para botões do painel de busca
 function localizarUsuario() {
-  if (!navigator.geolocation) {
-    return alert("Geolocalização não suportada.");
-  }
+  if (!navigator.geolocation) return alert("Geolocalização não suportada.");
   navigator.geolocation.getCurrentPosition(
     ({ coords }) => {
       map.setView([coords.latitude, coords.longitude], 16, { animate: true });
