@@ -22,38 +22,12 @@ app.use(express.static(path.join(__dirname, "public")));
 // 2) CONFIGURAÇÃO DOS POOLS PARA CADA CIDADE
 // ===========================================================
 const pools = {
-  sjc: new Pool({
+  dados_poste: new Pool({
     connectionString:
-      "postgresql://postgres:rbhaEXKeIrsMmfCfcVQxACBtCZcVmePc@hopper.proxy.rlwy.net:43519/railway",
+      "postgresql://neondb_owner:npg_CIxXZ6mF9Oud@ep-dawn-boat-a8zaanby-pooler.eastus2.azure.neon.tech/neondb?sslmode=require",
     ssl: { rejectUnauthorized: false },
-  }),
-  mogi: new Pool({
-    connectionString:
-      "postgresql://postgres:XzHyeNIcbThuKDxEsgbZBTrdpNUTIfNz@tramway.proxy.rlwy.net:39024/railway",
-    ssl: { rejectUnauthorized: false },
-  }),
-  ln: new Pool({
-    connectionString:
-      "postgresql://postgres:TFSZLSTrUhcRVEzdeToWmbOrxnkvWXdL@shuttle.proxy.rlwy.net:35000/railway",
-    ssl: { rejectUnauthorized: false },
-  }),
-  guarulhos: new Pool({
-    connectionString:
-      "postgresql://postgres:CFEAhBpQDeuPwjJUmVzgjjlbBaamaUns@yamanote.proxy.rlwy.net:35807/railway",
-    ssl: { rejectUnauthorized: false },
-  }),
-  guara: new Pool({
-    connectionString:
-      "postgresql://postgres:GoOYbaAbfzMwVkcSgNitAYkeUWKRCsrY@switchback.proxy.rlwy.net:10799/railway",
-    ssl: { rejectUnauthorized: false },
-  }),
-  demais: new Pool({
-    connectionString:
-      "postgresql://postgres:BajshBCFTNWXlnuGQXLNOwiyfvaLhAgJ@centerbeam.proxy.rlwy.net:45633/railway",
-    ssl: { rejectUnauthorized: false },
-  }),
-};
 
+  }),
 // ===========================================================
 // 3) CACHE PARA /api/postes (GET) – JÁ EXISTENTE
 // ===========================================================
