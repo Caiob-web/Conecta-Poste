@@ -24,10 +24,11 @@ app.use(express.static(path.join(__dirname, "public")));
 const pools = {
   dados_poste: new Pool({
     connectionString:
-      "postgresql://neondb_owner:npg_CIxXZ6mF9Oud@ep-dawn-boat-a8zaanby-pooler.eastus2.azure.neon.tech/neondb?sslmode=require",
+      process.env.DATABASE_URL || "postgresql://neondb_owner:npg_CIxXZ6mF9Oud@ep-dawn-boat-a8zaanby-pooler.eastus2.azure.neon.tech/neondb?sslmode=require",
     ssl: { rejectUnauthorized: false },
+  })
+};
 
-  }),
 // ===========================================================
 // 3) CACHE PARA /api/postes (GET) – JÁ EXISTENTE
 // ===========================================================
@@ -81,7 +82,6 @@ app.post("/api/postes/report", async (req, res) => {
         .json({ error: "Envie um array de IDs no corpo da requisição." });
     }
 
-    // Converter IDs para inteiros (caso sejam numéricos) e filtrar inválidos
     const idsNum = ids
       .map((x) => parseInt(x, 10))
       .filter((n) => !isNaN(n));
@@ -92,7 +92,6 @@ app.post("/api/postes/report", async (req, res) => {
         .json({ error: "Nenhum ID válido encontrado." });
     }
 
-    // 4.1) BUSCA EM TODOS OS POOLS APENAS OS REGISTROS COM id_poste NO ARRAY
     const resultados = await Promise.all(
       Object.entries(pools).map(async ([cidade, pool]) => {
         const { rows } = await pool.query(
@@ -112,7 +111,6 @@ app.post("/api/postes/report", async (req, res) => {
       })
     );
 
-    // Achata o array de arrays em um único array de objetos
     const todosRegistros = resultados.flat();
 
     if (todosRegistros.length === 0) {
@@ -121,7 +119,6 @@ app.post("/api/postes/report", async (req, res) => {
         .json({ error: "Nenhum poste encontrado para esses IDs." });
     }
 
-    // 4.2) AGRUPA POR id_poste: cada ID → { coordenadas: string, empresas: Set<string> }
     const mapPorPoste = {};
     todosRegistros.forEach((row) => {
       const { id_poste, empresa, coordenadas } = row;
@@ -136,18 +133,15 @@ app.post("/api/postes/report", async (req, res) => {
       }
     });
 
-    // 4.3) MONTA O WORKBOOK COM exceljs
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Relatório de Postes");
 
-    // Define colunas
     sheet.columns = [
       { header: "ID POSTE", key: "id_poste", width: 15 },
       { header: "EMPRESAS", key: "empresas", width: 40 },
       { header: "COORDENADA", key: "coordenadas", width: 25 },
     ];
 
-    // Preenche cada linha: id_poste, empresas (join por vírgula), coordenadas
     Object.entries(mapPorPoste).forEach(([id, info]) => {
       const listaEmpresas = [...info.empresas].join(", ");
       sheet.addRow({
@@ -157,7 +151,6 @@ app.post("/api/postes/report", async (req, res) => {
       });
     });
 
-    // 4.4) CONFIGURA HEADERS PARA DOWNLOAD DO ARQUIVO .XLSX
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -167,7 +160,6 @@ app.post("/api/postes/report", async (req, res) => {
       "attachment; filename=relatorio_postes.xlsx"
     );
 
-    // Escreve o workbook direto na resposta
     await workbook.xlsx.write(res);
     res.end();
   } catch (error) {
