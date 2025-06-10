@@ -65,9 +65,9 @@ app.get("/api/postes", async (req, res) => {
 
     res.json(todosPostes);
   } catch (err) {
-    console.error("Erro ao buscar dados:", err);
-    res.status(500).json({ error: "Erro no servidor" });
-  }
+  console.error("Erro ao buscar dados:", err); // <--- já existe
+  res.status(500).json({ error: "Erro no servidor", detalhes: err.message });
+}
 });
 
 // ===========================================================
