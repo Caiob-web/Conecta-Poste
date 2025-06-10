@@ -5,7 +5,6 @@ const cors = require("cors");
 const path = require("path");
 const { Pool } = require("pg");
 const ExcelJS = require("exceljs");
-const { NeonApiClient } = require("@neondatabase/api-client");
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -18,21 +17,20 @@ app.use((req, res, next) => {
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   next();
 });
-
-app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
+app.use(cors({ origin: "*" }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
 // ===========================================================
-// 2) CONEXÃO AO BANCO DE DADOS (UM ÚNICO POOL)
+// 2) POOL ÚNICO PARA O NEON (via variável de ambiente DATABASE_URL)
 // ===========================================================
 const pool = new Pool({
-  connectionString: "postgresql://neondb_owner:npg_CIxXZ6mF9Oud@ep-dawn-boat-a8zaanby-pooler.eastus2.azure.neon.tech/neondb?sslmode=require",
+  connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
 });
 
 // ===========================================================
-// 3) CACHE EM MEMÓRIA PARA /api/postes (GET)
+// 3) CACHE LOCAL PARA REDUZIR USO DO NEON
 // ===========================================================
 let cachePostes = null;
 let cacheTimestamp = 0;
@@ -45,13 +43,15 @@ app.get("/api/postes", async (req, res) => {
   }
 
   try {
-    const result = await pool.query(
-      `SELECT id_poste, empresa, coordenadas FROM vw_postes_com_coord WHERE coordenadas IS NOT NULL AND TRIM(coordenadas) <> ''`
-    );
+    const { rows } = await pool.query(`
+      SELECT id_poste, empresa, coordenadas
+      FROM vw_postes_com_coord
+      WHERE coordenadas IS NOT NULL AND TRIM(coordenadas) <> ''
+    `);
 
-    cachePostes = result.rows;
+    cachePostes = rows;
     cacheTimestamp = now;
-    res.json(result.rows);
+    res.json(rows);
   } catch (err) {
     console.error("Erro ao buscar dados:", err);
     res.status(500).json({ error: "Erro no servidor" });
@@ -59,36 +59,33 @@ app.get("/api/postes", async (req, res) => {
 });
 
 // ===========================================================
-// 4) ROTA: POST /api/postes/report → GERA O EXCEL
+// 4) ROTA DE RELATÓRIO EXCEL
 // ===========================================================
 app.post("/api/postes/report", async (req, res) => {
   try {
     const { ids } = req.body;
-    if (!Array.isArray(ids) || !ids.length) {
-      return res.status(400).json({ error: "Envie um array de IDs no corpo da requisição." });
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: "Envie um array de IDs." });
     }
 
-    const idsNum = ids.map(x => parseInt(x, 10)).filter(n => !isNaN(n));
-    if (!idsNum.length) {
-      return res.status(400).json({ error: "Nenhum ID válido encontrado." });
-    }
+    const idsNum = ids.map(x => parseInt(x)).filter(n => !isNaN(n));
 
     const { rows } = await pool.query(
       `SELECT id_poste, empresa, coordenadas FROM vw_postes_com_coord WHERE id_poste = ANY($1)`,
       [idsNum]
     );
 
-    if (!rows.length) {
-      return res.status(404).json({ error: "Nenhum poste encontrado para esses IDs." });
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Nenhum poste encontrado." });
     }
 
-    const mapPorPoste = {};
+    const map = {};
     rows.forEach(({ id_poste, empresa, coordenadas }) => {
-      if (!mapPorPoste[id_poste]) {
-        mapPorPoste[id_poste] = { coordenadas, empresas: new Set() };
+      if (!map[id_poste]) {
+        map[id_poste] = { coordenadas, empresas: new Set() };
       }
       if (empresa && empresa.toUpperCase() !== "DISPONÍVEL") {
-        mapPorPoste[id_poste].empresas.add(empresa);
+        map[id_poste].empresas.add(empresa);
       }
     });
 
@@ -100,9 +97,9 @@ app.post("/api/postes/report", async (req, res) => {
       { header: "COORDENADA", key: "coordenadas", width: 25 },
     ];
 
-    Object.entries(mapPorPoste).forEach(([id, info]) => {
+    Object.entries(map).forEach(([id, info]) => {
       sheet.addRow({
-        id_poste: parseInt(id, 10),
+        id_poste: parseInt(id),
         empresas: [...info.empresas].join(", "),
         coordenadas: info.coordenadas,
       });
@@ -110,7 +107,6 @@ app.post("/api/postes/report", async (req, res) => {
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", "attachment; filename=relatorio_postes.xlsx");
-
     await workbook.xlsx.write(res);
     res.end();
   } catch (error) {
@@ -120,44 +116,14 @@ app.post("/api/postes/report", async (req, res) => {
 });
 
 // ===========================================================
-// 5) ROTA /api/neon/status → CONSULTA DADOS DO PROJETO NEON
-// ===========================================================
-const neon = new NeonApiClient("napi_6avglq4ox3f2lj4l2m7048cdrsts50pn6wq3xxh8xfjg7lncdxif6v1jym4gy6ob");
-
-app.get("/api/neon/status", async (req, res) => {
-  try {
-    const projetos = await neon.projects.list();
-    if (!projetos.projects.length) return res.status(404).json({ error: "Nenhum projeto encontrado." });
-
-    const projeto = projetos.projects[0];
-    const detalhes = await neon.projects.retrieve(projeto.id);
-
-    res.json({
-      nome: detalhes.name,
-      id: detalhes.id,
-      region: detalhes.region_id,
-      created_at: detalhes.created_at,
-      status: detalhes.provisioner_state,
-      branch: detalhes.production_branch?.name || "não informado",
-      usage: detalhes.usage_model,
-      storage_limit_mb: detalhes.storage_limit_mb,
-      store_mb: detalhes.store_mb,
-    });
-  } catch (err) {
-    console.error("Erro ao consultar Neon:", err.message);
-    res.status(500).json({ error: "Erro ao consultar dados do Neon." });
-  }
-});
-
-// ===========================================================
-// 6) ROTA CORINGA (404)
+// 5) ROTA CORINGA 404
 // ===========================================================
 app.use((req, res) => {
   res.status(404).send("Rota não encontrada");
 });
 
 // ===========================================================
-// 7) INICIA O SERVIDOR
+// 6) INICIA O SERVIDOR
 // ===========================================================
 app.listen(port, () => {
   console.log(`🚀 Servidor rodando na porta ${port}`);
