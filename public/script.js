@@ -1,6 +1,5 @@
-// script.js
+// script.js (versão com carregamento BBOX e debug)
 
-// Inicializa o mapa
 const map = L.map("map").setView([-23.2, -45.9], 12);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
@@ -13,67 +12,69 @@ const markers = L.markerClusterGroup({
 });
 markers.on("clusterclick", (a) => a.layer.spiderfy());
 
-map.addLayer(markers);
-
-const todosPostes = [];
-let carregando = false;
-let cacheCoordenadas = new Set();
-
+let todosPostes = [];
 const spinner = document.getElementById("carregando");
 
-map.on("moveend", carregarPostesVisiveis);
-
-carregarPostesVisiveis(); // carregar ao iniciar
-
-function carregarPostesVisiveis() {
-  if (carregando) return;
-  carregando = true;
+function carregarPostesPorBBOX() {
   if (spinner) spinner.style.display = "flex";
 
   const bounds = map.getBounds();
-  const bbox = [
-    bounds.getSouth(),
-    bounds.getWest(),
-    bounds.getNorth(),
-    bounds.getEast()
-  ].map(coord => coord.toFixed(6)).join(",");
+  const url = `/api/postes/bbox?minLat=${bounds.getSouth()}&maxLat=${bounds.getNorth()}&minLon=${bounds.getWest()}&maxLon=${bounds.getEast()}`;
 
-  fetch(`/api/postes?bbox=${bbox}`)
-    .then(res => {
-      if (!res.ok) throw new Error(`Erro: ${res.status}`);
+  console.log("🔍 Carregando BBOX:", url);
+
+  fetch(url)
+    .then((res) => {
+      if (!res.ok) throw new Error(`Erro ${res.status}`);
       return res.json();
     })
-    .then(data => {
-      console.log("Postes visíveis:", data.length);
+    .then((data) => {
+      console.log("✅ Postes carregados:", data.length);
 
-      data.forEach(poste => {
+      markers.clearLayers();
+      todosPostes = [];
+
+      const agrupado = {};
+      data.forEach((poste) => {
         if (!poste.coordenadas) return;
-        if (cacheCoordenadas.has(poste.id_poste)) return; // já adicionado
-
         const [lat, lon] = poste.coordenadas.split(",").map(Number);
         if (isNaN(lat) || isNaN(lon)) return;
-
-        const icone = L.divIcon({
-          html: `<div style="width:14px;height:14px;border-radius:50%;background:green;border:2px solid white;"></div>`,
-          iconSize: [16,16],
-          iconAnchor: [8,8]
-        });
-
-        const marker = L.marker([lat, lon], { icon: icone });
-        marker.bindPopup(`<b>ID do Poste:</b> ${poste.id_poste}<br><b>Coordenadas:</b> ${lat.toFixed(6)}, ${lon.toFixed(6)}`);
-        marker.bindTooltip(`ID: ${poste.id_poste}`, { direction: "top" });
-
-        markers.addLayer(marker);
-        cacheCoordenadas.add(poste.id_poste);
-        todosPostes.push({ id_poste: poste.id_poste, coordenadas: poste.coordenadas });
+        const key = poste.id_poste;
+        if (!agrupado[key]) {
+          agrupado[key] = { id_poste: poste.id_poste, coordenadas: poste.coordenadas, lat, lon };
+        }
       });
 
-      if (spinner) spinner.style.display = "none";
-      carregando = false;
+      Object.values(agrupado).forEach((poste) => {
+        const cor = "green";
+        const icone = L.divIcon({
+          html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
+        });
+
+        const marker = L.marker([poste.lat, poste.lon], { icon: icone });
+        marker.bindPopup(
+          `<b>ID do Poste:</b> ${poste.id_poste}<br><b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}`
+        );
+        marker.bindTooltip(`ID: ${poste.id_poste}`, { direction: "top" });
+        markers.addLayer(marker);
+
+        todosPostes.push(poste);
+      });
+
+      map.addLayer(markers);
     })
-    .catch(err => {
-      console.error("Erro ao carregar postes visíveis:", err);
+    .catch((err) => {
+      console.error("❌ Erro ao buscar postes:", err);
+      alert("Erro ao carregar os dados dos postes.");
+    })
+    .finally(() => {
       if (spinner) spinner.style.display = "none";
-      carregando = false;
     });
 }
+
+map.on("moveend", carregarPostesPorBBOX);
+
+// Carregamento inicial
+carregarPostesPorBBOX();
