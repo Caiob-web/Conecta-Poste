@@ -29,6 +29,37 @@ let cachePostes = null;
 let cacheTimestamp = 0;
 const CACHE_TTL = 10 * 60 * 1000;
 
+const express = require("express");
+const cors = require("cors");
+const path = require("path");
+const { Pool } = require("pg");
+const ExcelJS = require("exceljs");
+
+const app = express();
+const port = process.env.PORT || 3000;
+
+// ==========================================
+// 1. MIDDLEWARES
+// ==========================================
+app.use(cors({ origin: "*" }));
+app.use(express.json());
+app.use(express.static(path.join(__dirname, "public")));
+
+// ==========================================
+// 2. CONEXÃO COM O NEON
+// ==========================================
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+});
+
+// ==========================================
+// 3. CACHE LOCAL PARA OTIMIZAR USO DO NEON
+// ==========================================
+let cachePostes = null;
+let cacheTimestamp = 0;
+const CACHE_TTL = 10 * 60 * 1000;
+
 app.get("/api/postes", async (req, res) => {
   const now = Date.now();
   if (cachePostes && now - cacheTimestamp < CACHE_TTL) {
