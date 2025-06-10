@@ -124,17 +124,11 @@
         height: 100%;
         top: 0;
         left: 0;
-        display: flex;
+        display: none;
         justify-content: center;
         align-items: center;
         flex-direction: column;
-        opacity: 1;
         transition: opacity 0.3s ease;
-      }
-
-      .overlay-loading.esconder {
-        opacity: 0;
-        pointer-events: none;
       }
 
       .spinner {
@@ -199,22 +193,18 @@
 
     <div id="map"></div>
 
-    <!-- Scripts principais -->
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
     <script src="script.js"></script>
 
-    <!-- Clima e hora -->
     <div id="widget-clima">
       <div id="hora">🕒 Carregando hora...</div>
       <div id="tempo">⛅ Carregando previsão do tempo...</div>
     </div>
 
-    <!-- PDF e mapa como imagem -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://unpkg.com/leaflet-image/leaflet-image.js"></script>
 
-    <!-- Overlay de carregamento -->
     <div id="carregando" class="overlay-loading">
       <div class="spinner"></div>
       <div class="texto-loading">Carregando postes...</div>
