@@ -169,12 +169,13 @@
     <!-- 1) Dependências de terceiros -->
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
-    <script src="https://unpkg.com/ngeohash/browser.js"></script>
+    <!-- Carrega o UMD principal do ngeohash -->
+    <script src="https://unpkg.com/ngeohash/main.js"></script>
 
     <!-- 2) Seu script principal -->
     <script src="script.js"></script>
 
-    <!-- 3) Definição global de localizarUsuario -->
+    <!-- 3) Função global de localização -->
     <script>
       function localizarUsuario() {
         if (!navigator.geolocation) {
