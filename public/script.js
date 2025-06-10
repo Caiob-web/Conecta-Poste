@@ -14,55 +14,74 @@ const markers = L.markerClusterGroup({
 markers.on("clusterclick", (a) => a.layer.spiderfy());
 
 const todosPostes = [];
-
-// Carregamento inicial
 const spinner = document.getElementById("carregando");
-if (spinner) spinner.style.display = "block";
 
-fetch("/api/postes")
-  .then(res => {
-    if (!res.ok) throw new Error(`Status ${res.status}`);
-    return res.json();
-  })
-  .then(data => {
-    console.log("GET /api/postes retornou:", data);
-    if (!Array.isArray(data)) {
-      console.error("Esperava um array de postes, mas recebi:", data);
-      return;
-    }
+function getBBox(map) {
+  const bounds = map.getBounds();
+  return [
+    bounds.getSouth(),
+    bounds.getWest(),
+    bounds.getNorth(),
+    bounds.getEast()
+  ].map(n => n.toFixed(6)).join(',');
+}
 
-    const agrupado = {};
-    data.forEach(poste => {
-      if (!poste.coordenadas) return;
-      const [lat, lon] = poste.coordenadas.split(",").map(Number);
-      if (isNaN(lat) || isNaN(lon)) return;
-      const key = poste.id_poste;
-      if (!agrupado[key]) {
-        agrupado[key] = { id_poste: poste.id_poste, coordenadas: poste.coordenadas, lat, lon };
-      }
-    });
+function carregarPostesPorBBOX() {
+  const bbox = getBBox(map);
+  if (spinner) spinner.style.display = "block";
 
-    Object.values(agrupado).forEach((poste) => {
-      const cor = "green";
-      const icone = L.divIcon({
-        html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
-        iconSize: [16,16],
-        iconAnchor: [8,8]
+  fetch(`/api/postes?bbox=${bbox}`)
+    .then(res => {
+      if (!res.ok) throw new Error(`Status ${res.status}`);
+      return res.json();
+    })
+    .then(data => {
+      markers.clearLayers();
+      todosPostes.length = 0;
+
+      const agrupado = {};
+      data.forEach(poste => {
+        if (!poste.coordenadas) return;
+        const [lat, lon] = poste.coordenadas.split(",").map(Number);
+        if (isNaN(lat) || isNaN(lon)) return;
+        const key = poste.id_poste;
+        if (!agrupado[key]) {
+          agrupado[key] = { id_poste: poste.id_poste, coordenadas: poste.coordenadas, lat, lon };
+        }
       });
 
-      const marker = L.marker([poste.lat, poste.lon], { icon: icone });
-      marker.bindPopup(`<b>ID do Poste:</b> ${poste.id_poste}<br><b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}`);
-      marker.bindTooltip(`ID: ${poste.id_poste}`, { direction: "top" });
-      markers.addLayer(marker);
+      Object.values(agrupado).forEach((poste) => {
+        const cor = "green";
+        const icone = L.divIcon({
+          html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
+          iconSize: [16,16],
+          iconAnchor: [8,8]
+        });
 
-      todosPostes.push(poste);
+        const marker = L.marker([poste.lat, poste.lon], { icon: icone });
+        marker.bindPopup(`<b>ID do Poste:</b> ${poste.id_poste}<br><b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}`);
+        marker.bindTooltip(`ID: ${poste.id_poste}`, { direction: "top" });
+        markers.addLayer(marker);
+
+        todosPostes.push(poste);
+      });
+
+      map.addLayer(markers);
+      if (spinner) spinner.style.display = "none";
+    })
+    .catch(err => {
+      console.error("Erro ao buscar postes:", err);
+      if (spinner) spinner.style.display = "none";
+      alert("Erro ao carregar os dados dos postes.");
     });
+}
 
-    map.addLayer(markers);
-    if (spinner) spinner.style.display = "none";
-  })
-  .catch(err => {
-    console.error("Erro ao buscar postes:", err);
-    if (spinner) spinner.style.display = "none";
-    alert("Erro ao carregar os dados dos postes.");
-  });
+let timeoutAtualiza = null;
+map.on("moveend", () => {
+  clearTimeout(timeoutAtualiza);
+  timeoutAtualiza = setTimeout(() => {
+    carregarPostesPorBBOX();
+  }, 400);
+});
+
+carregarPostesPorBBOX();
