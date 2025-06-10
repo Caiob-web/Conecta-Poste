@@ -1,20 +1,14 @@
-// script.js – Mapa otimizado com cache em IndexedDB, cache em memória, geohash,
-// clusterização com Canvas, debounce e payload reduzido.
+// script.js – mapa otimizado com cache IndexedDB, cache em memória,
+// geohash global, clusterização Canvas e debounce.
 
-// **Pré-requisitos**: instale a lib de geohash no seu projeto:
-//   npm install ngeohash
-// e certifique-se de que seu bundler suporte ES Modules ou inclua via CDN.
-
-import ngeohash from 'ngeohash';
-
-const dbName     = "PostesCache";
-const storeName  = "PostesPorTile";
-const CACHE_TTL  = 10 * 60 * 1000; // 10 minutos
+const dbName    = "PostesCache";
+const storeName = "PostesPorTile";
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutos
 
 let db;
 const memoryCache = new Map();
 
-// 1. Singleton para abrir o IndexedDB apenas uma vez
+// 1) Singleton IndexedDB
 const getDB = (() => {
   let promise;
   return () => {
@@ -36,13 +30,12 @@ const getDB = (() => {
   };
 })();
 
-// 2. Funções de cache no IndexedDB
+// 2) Cache no IndexedDB
 async function salvarCache(key, dados) {
   const database = await getDB();
   const tx = database.transaction(storeName, "readwrite");
   tx.objectStore(storeName).put({ key, timestamp: Date.now(), dados });
 }
-
 async function obterCache(key) {
   const database = await getDB();
   return new Promise(resolve => {
@@ -60,7 +53,7 @@ async function obterCache(key) {
   });
 }
 
-// 3. Gera chave fixa de tile via geohash (precisão 6)
+// 3) Chave de tile via geohash (usa global ngeohash)
 function bboxToGeohash(bounds, precision = 6) {
   const sw = bounds.getSouthWest();
   const ne = bounds.getNorthEast();
@@ -69,14 +62,14 @@ function bboxToGeohash(bounds, precision = 6) {
   return ngeohash.encode(lat, lng, precision);
 }
 
-// 4. Busca dados da API (assumindo JSON [{id_poste, lat, lon}, …])
+// 4) Busca dados no backend
 async function fetchDados(key) {
   const res = await fetch(`/api/postes?tile=${key}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
 
-// 5. Cache em memória + IndexedDB
+// 5) Cache em memória + IndexedDB
 async function getDadosParaTile(key) {
   if (memoryCache.has(key)) {
     return memoryCache.get(key);
@@ -90,7 +83,7 @@ async function getDadosParaTile(key) {
   return dados;
 }
 
-// 6. Ícone único (pode parametrizar cor futuramente)
+// 6) Ícone padrão
 const icone = L.divIcon({
   html: `<div style="width:14px;height:14px;border-radius:50%;
                    background:green;border:2px solid white;"></div>`,
@@ -98,20 +91,20 @@ const icone = L.divIcon({
   iconAnchor: [8, 8]
 });
 
-// 7. Inicialização do mapa e lógica de carregamento
+// 7) Inicialização do mapa
 (async () => {
-  await getDB();  // abre o IndexedDB
+  await getDB();
 
-  const map = L.map("map").setView([-23.2, -45.9], 12);
+  window.map = L.map("map").setView([-23.2, -45.9], 12);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
-  const markers = L.markerClusterGroup({
+  window.markers = L.markerClusterGroup({
     spiderfyOnMaxZoom: true,
     showCoverageOnHover: false,
     zoomToBoundsOnClick: false,
     maxClusterRadius: 60,
     disableClusteringAtZoom: 17,
-    renderer: L.canvas()  // Canvas para performance
+    renderer: L.canvas()
   });
   map.addLayer(markers);
 
@@ -130,13 +123,13 @@ const icone = L.divIcon({
     try {
       const dados = await getDadosParaTile(key);
       markers.clearLayers();
-      const camada = dados.map(({ id_poste, lat, lon }) => {
+      const lista = dados.map(({ id_poste, lat, lon }) => {
         const m = L.marker([lat, lon], { icon: icone });
         m.bindPopup(`<b>ID:</b> ${id_poste}`);
         m.bindTooltip(`ID: ${id_poste}`, { direction: "top" });
         return m;
       });
-      markers.addLayers(camada);
+      markers.addLayers(lista);
     } catch (err) {
       console.error("Erro ao carregar postes:", err);
     } finally {
