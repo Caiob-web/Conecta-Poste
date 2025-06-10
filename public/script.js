@@ -1,5 +1,5 @@
 // script.js – mapa otimizado com cache IndexedDB, cache em memória,
-// geohash global, clusterização Canvas e debounce.
+// geohash global, clusterização Canvas, debounce e handlers de UI.
 
 const dbName    = "PostesCache";
 const storeName = "PostesPorTile";
@@ -16,13 +16,9 @@ const getDB = (() => {
       promise = new Promise((resolve, reject) => {
         const req = indexedDB.open(dbName, 1);
         req.onerror = () => reject(req.error);
-        req.onsuccess = () => {
-          db = req.result;
-          resolve(db);
-        };
+        req.onsuccess = () => resolve(req.result);
         req.onupgradeneeded = e => {
-          const _db = e.target.result;
-          _db.createObjectStore(storeName, { keyPath: "key" });
+          e.target.result.createObjectStore(storeName, { keyPath: "key" });
         };
       });
     }
@@ -30,43 +26,41 @@ const getDB = (() => {
   };
 })();
 
-// 2) Cache no IndexedDB
+// 2) Funções de cache
 async function salvarCache(key, dados) {
-  const database = await getDB();
-  const tx = database.transaction(storeName, "readwrite");
+  const db = await getDB();
+  const tx = db.transaction(storeName, "readwrite");
   tx.objectStore(storeName).put({ key, timestamp: Date.now(), dados });
 }
 async function obterCache(key) {
-  const database = await getDB();
+  const db = await getDB();
   return new Promise(resolve => {
-    const tx  = database.transaction(storeName, "readonly");
+    const tx  = db.transaction(storeName, "readonly");
     const req = tx.objectStore(storeName).get(key);
     req.onsuccess = () => {
-      const res = req.result;
-      if (res && Date.now() - res.timestamp < CACHE_TTL) {
-        resolve(res.dados);
-      } else {
-        resolve(null);
-      }
+      const r = req.result;
+      resolve(r && Date.now() - r.timestamp < CACHE_TTL ? r.dados : null);
     };
     req.onerror = () => resolve(null);
   });
 }
 
-// 3) Chave de tile via geohash (usa global ngeohash)
+// 3) Geohash tile (usa global ngeohash)
 function bboxToGeohash(bounds, precision = 6) {
-  if (typeof ngeohash === 'undefined') {
-    console.error('ngeohash não encontrado. Verifique se o script foi carregado corretamente.');
+  if (typeof ngeohash === "undefined") {
+    console.error("ngeohash não encontrado – verifique o <script>.");
     return null;
   }
   const sw = bounds.getSouthWest();
   const ne = bounds.getNorthEast();
-  const lat = (sw.lat + ne.lat) / 2;
-  const lng = (sw.lng + ne.lng) / 2;
-  return ngeohash.encode(lat, lng, precision);
+  return ngeohash.encode(
+    (sw.lat + ne.lat) / 2,
+    (sw.lng + ne.lng) / 2,
+    precision
+  );
 }
 
-// 4) Busca dados no backend
+// 4) Busca ao backend
 async function fetchDados(key) {
   const res = await fetch(`/api/postes?tile=${key}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -75,9 +69,7 @@ async function fetchDados(key) {
 
 // 5) Cache em memória + IndexedDB
 async function getDadosParaTile(key) {
-  if (memoryCache.has(key)) {
-    return memoryCache.get(key);
-  }
+  if (memoryCache.has(key)) return memoryCache.get(key);
   let dados = await obterCache(key);
   if (!dados) {
     dados = await fetchDados(key);
@@ -90,15 +82,14 @@ async function getDadosParaTile(key) {
 // 6) Ícone padrão
 const icone = L.divIcon({
   html: `<div style="width:14px;height:14px;border-radius:50%;
-                   background:green;border:2px solid white;"></div>`,
+                    background:green;border:2px solid white;"></div>`,
   iconSize: [16, 16],
   iconAnchor: [8, 8]
 });
 
-// 7) Inicialização do mapa
+// 7) Inicializa mapa e clusters
 (async () => {
   await getDB();
-
   window.map = L.map("map").setView([-23.2, -45.9], 12);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
@@ -108,34 +99,33 @@ const icone = L.divIcon({
     zoomToBoundsOnClick: false,
     maxClusterRadius: 60,
     disableClusteringAtZoom: 17,
-    renderer: L.canvas()
+    renderer: L.canvas(),
   });
   map.addLayer(markers);
 
-  let debounceTimeout;
+  let debounceTimer;
   map.on("moveend", () => {
-    clearTimeout(debounceTimeout);
-    debounceTimeout = setTimeout(carregarPostesPorTile, 200);
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(carregarPostesPorTile, 200);
   });
 
   async function carregarPostesPorTile() {
-    const bounds = map.getBounds();
-    const key    = bboxToGeohash(bounds, 6);
+    const key = bboxToGeohash(map.getBounds());
+    if (!key) return;
     const spinner = document.getElementById("carregando");
     if (spinner) spinner.style.display = "flex";
 
     try {
       const dados = await getDadosParaTile(key);
       markers.clearLayers();
-      const lista = dados.map(({ id_poste, lat, lon }) => {
+      const points = dados.map(({ id_poste, lat, lon }) => {
         const m = L.marker([lat, lon], { icon: icone });
         m.bindPopup(`<b>ID:</b> ${id_poste}`);
-        m.bindTooltip(`ID: ${id_poste}`, { direction: "top" });
         return m;
       });
-      markers.addLayers(lista);
-    } catch (err) {
-      console.error("Erro ao carregar postes:", err);
+      markers.addLayers(points);
+    } catch (e) {
+      console.error("Erro ao carregar postes:", e);
     } finally {
       if (spinner) spinner.style.display = "none";
     }
@@ -145,13 +135,57 @@ const icone = L.divIcon({
   carregarPostesPorTile();
 })();
 
-// 8) Handlers globais para botões do painel
-window.buscarID = () => console.warn('buscarID ainda não implementada');
-window.buscarCoordenada = () => console.warn('buscarCoordenada ainda não implementada');
-window.filtrarEmpresa = () => console.warn('filtrarEmpresa ainda não implementada');
-window.buscarPorRua = () => console.warn('buscarPorRua ainda não implementada');
-window.consultarIDsEmMassa = () => console.warn('consultarIDsEmMassa ainda não implementada');
-window.gerarExcel = () => console.warn('gerarExcel ainda não implementada');
-window.limparTudo = () => console.warn('limparTudo ainda não implementada');
-window.gerarPDFComMapa = () => console.warn('gerarPDFComMapa ainda não implementada');
-window.resetarMapa = () => console.warn('resetarMapa ainda não implementada');
+// 8) Handlers globais de UI
+function localizarUsuario() {
+  if (!navigator.geolocation) {
+    return alert("Geolocalização não suportada.");
+  }
+  navigator.geolocation.getCurrentPosition(
+    ({ coords }) => {
+      map.setView([coords.latitude, coords.longitude], 16, { animate: true });
+      L.marker([coords.latitude, coords.longitude], { icon: icone })
+        .addTo(markers)
+        .bindPopup("Você está aqui")
+        .openPopup();
+    },
+    () => alert("Não foi possível obter localização.")
+  );
+}
+function buscarID()           { console.warn("buscarID não implementado"); }
+function buscarCoordenada()   { console.warn("buscarCoordenada não implementado"); }
+function filtrarEmpresa()     { console.warn("filtrarEmpresa não implementado"); }
+function buscarPorRua()       { console.warn("buscarPorRua não implementado"); }
+function consultarIDsEmMassa(){ console.warn("consultarIDsEmMassa não implementado"); }
+function gerarExcel()         { console.warn("gerarExcel não implementado"); }
+function limparTudo()         { console.warn("limparTudo não implementado"); }
+function gerarPDFComMapa()    { console.warn("gerarPDFComMapa não implementado"); }
+function resetarMapa()        { console.warn("resetarMapa não implementado"); }
+
+// 9) Registra eventos do painel
+window.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("togglePainel")
+          .addEventListener("click", () => {
+    const p = document.getElementById("painelBusca");
+    p.style.display = p.style.display === "none" ? "block" : "none";
+  });
+  document.getElementById("localizacaoUsuario")
+          .addEventListener("click", localizarUsuario);
+  document.querySelector('[data-action="buscar-id"]')
+          .addEventListener("click", buscarID);
+  document.querySelector('[data-action="buscar-coord"]')
+          .addEventListener("click", buscarCoordenada);
+  document.querySelector('[data-action="filtrar-empresa"]')
+          .addEventListener("click", filtrarEmpresa);
+  document.querySelector('[data-action="buscar-rua"]')
+          .addEventListener("click", buscarPorRua);
+  document.querySelector('[data-action="verificar-ids"]')
+          .addEventListener("click", consultarIDsEmMassa);
+  document.getElementById("btnGerarExcel")
+          .addEventListener("click", gerarExcel);
+  document.querySelector('[data-action="limpar"]')
+          .addEventListener("click", limparTudo);
+  document.querySelector('[data-action="gerar-pdf"]')
+          .addEventListener("click", gerarPDFComMapa);
+  document.querySelector('[data-action="resetar"]')
+          .addEventListener("click", resetarMapa);
+});
