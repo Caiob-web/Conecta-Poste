@@ -1,14 +1,14 @@
 // script.js – mapa otimizado com cache IndexedDB, cache em memória,
-// geohash global, clusterização Canvas, debounce e handlers de UI.
+// BBOX-based cache key, clusterização Canvas, debounce e handlers de UI.
 
-const dbName    = "PostesCache";
-const storeName = "PostesPorTile";
+const dbName = "PostesCache";
+const storeName = "PostesPorBbox";
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutos
 
 let db;
 const memoryCache = new Map();
 
-// 1) Singleton IndexedDB
+// 1) Singleton IndexedDB (abre uma vez)
 const getDB = (() => {
   let promise;
   return () => {
@@ -26,70 +26,66 @@ const getDB = (() => {
   };
 })();
 
-// 2) Funções de cache
+// 2) Funções de cache no IndexedDB
 async function salvarCache(key, dados) {
-  const db = await getDB();
-  const tx = db.transaction(storeName, "readwrite");
+  const database = await getDB();
+  const tx = database.transaction(storeName, "readwrite");
   tx.objectStore(storeName).put({ key, timestamp: Date.now(), dados });
 }
 async function obterCache(key) {
-  const db = await getDB();
+  const database = await getDB();
   return new Promise(resolve => {
-    const tx  = db.transaction(storeName, "readonly");
+    const tx = database.transaction(storeName, "readonly");
     const req = tx.objectStore(storeName).get(key);
     req.onsuccess = () => {
-      const r = req.result;
-      resolve(r && Date.now() - r.timestamp < CACHE_TTL ? r.dados : null);
+      const res = req.result;
+      resolve(res && Date.now() - res.timestamp < CACHE_TTL ? res.dados : null);
     };
     req.onerror = () => resolve(null);
   });
 }
 
-// 3) Geohash tile (usa global ngeohash)
-function bboxToGeohash(bounds, precision = 6) {
-  if (typeof ngeohash === "undefined") {
-    console.error("ngeohash não encontrado – verifique o <script>.");
-    return null;
-  }
+// 3) Gera chave fixa a partir da BBOX (lat/lng arredondados)
+function boundsToKey(bounds, precision = 4) {
   const sw = bounds.getSouthWest();
   const ne = bounds.getNorthEast();
-  return ngeohash.encode(
-    (sw.lat + ne.lat) / 2,
-    (sw.lng + ne.lng) / 2,
-    precision
-  );
+  return `${sw.lat.toFixed(precision)},${sw.lng.toFixed(precision)}|${ne.lat.toFixed(precision)},${ne.lng.toFixed(precision)}`;
 }
 
-// 4) Busca ao backend
-async function fetchDados(key) {
-  const res = await fetch(`/api/postes?tile=${key}`);
+// 4) Busca dados no backend usando parâmetros BBOX
+async function fetchDados(bounds) {
+  const sw = bounds.getSouthWest();
+  const ne = bounds.getNorthEast();
+  const url = `/api/postes?north=${ne.lat}&south=${sw.lat}&east=${ne.lng}&west=${sw.lng}`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
 
 // 5) Cache em memória + IndexedDB
-async function getDadosParaTile(key) {
+async function getDados(bounds) {
+  const key = boundsToKey(bounds);
   if (memoryCache.has(key)) return memoryCache.get(key);
   let dados = await obterCache(key);
   if (!dados) {
-    dados = await fetchDados(key);
+    dados = await fetchDados(bounds);
     await salvarCache(key, dados);
   }
   memoryCache.set(key, dados);
   return dados;
 }
 
-// 6) Ícone padrão
+// 6) Ícone padrão dos marcadores
 const icone = L.divIcon({
-  html: `<div style="width:14px;height:14px;border-radius:50%;
-                    background:green;border:2px solid white;"></div>`,
+  html: `<div style="width:14px;height:14px;border-radius:50%;background:green;border:2px solid white;"></div>`,
   iconSize: [16, 16],
   iconAnchor: [8, 8]
 });
 
-// 7) Inicializa mapa e clusters
+// 7) Inicialização do mapa + clusterização
 (async () => {
   await getDB();
+
   window.map = L.map("map").setView([-23.2, -45.9], 12);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
@@ -99,43 +95,41 @@ const icone = L.divIcon({
     zoomToBoundsOnClick: false,
     maxClusterRadius: 60,
     disableClusteringAtZoom: 17,
-    renderer: L.canvas(),
+    renderer: L.canvas()
   });
   map.addLayer(markers);
 
   let debounceTimer;
   map.on("moveend", () => {
     clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(carregarPostesPorTile, 200);
+    debounceTimer = setTimeout(loadPoints, 200);
   });
 
-  async function carregarPostesPorTile() {
-    const key = bboxToGeohash(map.getBounds());
-    if (!key) return;
+  async function loadPoints() {
     const spinner = document.getElementById("carregando");
     if (spinner) spinner.style.display = "flex";
 
     try {
-      const dados = await getDadosParaTile(key);
+      const dados = await getDados(map.getBounds());
       markers.clearLayers();
-      const points = dados.map(({ id_poste, lat, lon }) => {
+      const pontos = dados.map(({ id_poste, lat, lon }) => {
         const m = L.marker([lat, lon], { icon: icone });
         m.bindPopup(`<b>ID:</b> ${id_poste}`);
         return m;
       });
-      markers.addLayers(points);
-    } catch (e) {
-      console.error("Erro ao carregar postes:", e);
+      markers.addLayers(pontos);
+    } catch (err) {
+      console.error("Erro ao carregar postes:", err);
     } finally {
       if (spinner) spinner.style.display = "none";
     }
   }
 
-  // primeiro carregamento
-  carregarPostesPorTile();
+  // Carregamento inicial
+  loadPoints();
 })();
 
-// 8) Handlers globais de UI
+// 8) Handlers globais para botões do painel
 function localizarUsuario() {
   if (!navigator.geolocation) {
     return alert("Geolocalização não suportada.");
@@ -161,31 +155,20 @@ function limparTudo()         { console.warn("limparTudo não implementado"); }
 function gerarPDFComMapa()    { console.warn("gerarPDFComMapa não implementado"); }
 function resetarMapa()        { console.warn("resetarMapa não implementado"); }
 
-// 9) Registra eventos do painel
+// 9) Registro de eventos do painel de busca
 window.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("togglePainel")
-          .addEventListener("click", () => {
+  document.getElementById("togglePainel").addEventListener("click", () => {
     const p = document.getElementById("painelBusca");
     p.style.display = p.style.display === "none" ? "block" : "none";
   });
-  document.getElementById("localizacaoUsuario")
-          .addEventListener("click", localizarUsuario);
-  document.querySelector('[data-action="buscar-id"]')
-          .addEventListener("click", buscarID);
-  document.querySelector('[data-action="buscar-coord"]')
-          .addEventListener("click", buscarCoordenada);
-  document.querySelector('[data-action="filtrar-empresa"]')
-          .addEventListener("click", filtrarEmpresa);
-  document.querySelector('[data-action="buscar-rua"]')
-          .addEventListener("click", buscarPorRua);
-  document.querySelector('[data-action="verificar-ids"]')
-          .addEventListener("click", consultarIDsEmMassa);
-  document.getElementById("btnGerarExcel")
-          .addEventListener("click", gerarExcel);
-  document.querySelector('[data-action="limpar"]')
-          .addEventListener("click", limparTudo);
-  document.querySelector('[data-action="gerar-pdf"]')
-          .addEventListener("click", gerarPDFComMapa);
-  document.querySelector('[data-action="resetar"]')
-          .addEventListener("click", resetarMapa);
+  document.getElementById("localizacaoUsuario").addEventListener("click", localizarUsuario);
+  document.querySelector('[data-action="buscar-id"]').addEventListener("click", buscarID);
+  document.querySelector('[data-action="buscar-coord"]').addEventListener("click", buscarCoordenada);
+  document.querySelector('[data-action="filtrar-empresa"]').addEventListener("click", filtrarEmpresa);
+  document.querySelector('[data-action="buscar-rua"]').addEventListener("click", buscarPorRua);
+  document.querySelector('[data-action="verificar-ids"]').addEventListener("click", consultarIDsEmMassa);
+  document.getElementById("btnGerarExcel").addEventListener("click", gerarExcel);
+  document.querySelector('[data-action="limpar"]').addEventListener("click", limparTudo);
+  document.querySelector('[data-action="gerar-pdf"]').addEventListener("click", gerarPDFComMapa);
+  document.querySelector('[data-action="resetar"]').addEventListener("click", resetarMapa);
 });
