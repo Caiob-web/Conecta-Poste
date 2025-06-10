@@ -13,66 +13,157 @@
         height: 100%;
         overflow: hidden;
       }
+
       #map {
         height: 100vh;
         width: 100vw;
       }
-      .overlay-loading {
-        position: fixed;
-        z-index: 3000;
-        background: rgba(255, 255, 255, 0.85);
-        width: 100%;
-        height: 100%;
-        top: 0;
-        left: 0;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        flex-direction: column;
-        transition: opacity 0.3s ease;
-        opacity: 1;
-      }
-      .overlay-loading.esconder {
-        opacity: 0;
-        pointer-events: none;
-      }
-      .texto-loading {
+
+      .painel-busca {
+        position: absolute;
+        top: 100px;
+        right: 10px;
+        z-index: 1000;
+        background: white;
+        padding: 8px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
         font-family: sans-serif;
-        color: #333;
-        font-size: 16px;
+        max-width: 260px;
+      }
+
+      .painel-busca input,
+      .painel-busca textarea {
+        margin-bottom: 4px;
+        width: 100%;
+        padding: 4px;
+        font-size: 13px;
+        box-sizing: border-box;
+      }
+
+      .painel-busca button {
+        margin: 3px 3px 0 0;
+        padding: 5px 8px;
+        font-size: 12px;
+      }
+
+      .legenda {
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        background: white;
+        padding: 10px;
+        border-radius: 8px;
+        font-family: sans-serif;
+        font-size: 14px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+      }
+
+      .legenda-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 5px;
+      }
+
+      .bolinha {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 8px;
+        border: 1px solid #555;
+      }
+
+      .botao-topo {
+        position: absolute;
+        right: 10px;
+        z-index: 1001;
+        padding: 5px 10px;
+        border-radius: 6px;
+        border: none;
+        font-family: sans-serif;
+        cursor: pointer;
+        box-shadow: 0 0 6px rgba(0, 0, 0, 0.2);
+        font-size: 13px;
+      }
+
+      #togglePainel {
+        top: 10px;
+      }
+
+      #localizacaoUsuario {
+        top: 50px;
+      }
+
+      #widget-clima {
+        position: fixed;
+        bottom: 10px;
+        right: 10px;
+        background: white;
+        border: 1px solid #ccc;
+        border-radius: 12px;
+        padding: 10px 15px;
+        font-size: 14px;
+        z-index: 1000;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        max-width: 260px;
+        line-height: 1.4;
+      }
+
+      #widget-clima img {
+        height: 24px;
+        width: 24px;
+        vertical-align: middle;
+        margin-right: 4px;
       }
     </style>
   </head>
-  <body>
-    <div id="map"></div>
 
-    <div id="carregando" class="overlay-loading">
-      <div class="texto-loading">Carregando postes...</div>
+  <body>
+    <button id="togglePainel" class="botao-topo">🙈 Esconder Painel</button>
+    <button id="localizacaoUsuario" class="botao-topo">📍 Minha Localização</button>
+
+    <div class="painel-busca" id="painelBusca">
+      <input type="text" id="busca-id" placeholder="Buscar por ID do poste" />
+      <input type="text" id="busca-coord" placeholder="Latitude,Longitude" />
+      <input type="text" id="busca-rua" placeholder="Buscar por rua" list="sugestoes-rua" />
+      <datalist id="sugestoes-rua"></datalist>
+      <input type="text" id="filtro-empresa" list="lista-empresas" placeholder="Filtrar por empresa" />
+      <datalist id="lista-empresas"></datalist>
+      <textarea id="ids-multiplos" rows="3" placeholder="Cole vários IDs separados por vírgula ou quebra de linha"></textarea>
+      <div style="display: flex; flex-wrap: wrap">
+        <button onclick="buscarID()">🔍 ID</button>
+        <button onclick="buscarCoordenada()">📍 Coordenada</button>
+        <button onclick="filtrarEmpresa()">🏢 Filtrar</button>
+        <button onclick="buscarPorRua()">🏠 Rua</button>
+        <button onclick="consultarIDsEmMassa()">🔎 Verificar IDs</button>
+        <button id="btnGerarExcel">📊 Excel</button>
+        <button onclick="limparTudo()">🧹 Limpar</button>
+        <button onclick="gerarPDFComMapa()">📄 PDF</button>
+        <button onclick="resetarMapa()">🔄 Tudo</button>
+      </div>
     </div>
+
+    <div class="legenda">
+      <div class="legenda-item">
+        <div class="bolinha" style="background: green"></div> Disponível
+      </div>
+      <div class="legenda-item">
+        <div class="bolinha" style="background: red"></div> Com 5+ empresas (futuro)
+      </div>
+    </div>
+
+    <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
-    <script>
-      const map = L.map("map").setView([-23.2, -45.9], 12);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+    <script src="script.js"></script>
 
-      const markers = L.markerClusterGroup();
-      fetch("/api/postes")
-        .then(res => res.json())
-        .then(data => {
-          data.forEach(poste => {
-            if (!poste.coordenadas) return;
-            const [lat, lon] = poste.coordenadas.split(",").map(Number);
-            if (isNaN(lat) || isNaN(lon)) return;
-            const marker = L.marker([lat, lon]);
-            marker.bindPopup(`ID: ${poste.id_poste}`);
-            markers.addLayer(marker);
-          });
-          map.addLayer(markers);
-          const overlay = document.getElementById("carregando");
-          if (overlay) overlay.classList.add("esconder");
-        })
-        .catch(err => console.error("Erro ao carregar postes:", err));
-    </script>
+    <div id="widget-clima">
+      <div id="hora">🕒 Carregando hora...</div>
+      <div id="tempo">⛅ Carregando previsão do tempo...</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/leaflet-image/leaflet-image.js"></script>
   </body>
 </html>
