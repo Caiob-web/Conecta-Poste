@@ -14,8 +14,6 @@ const port = process.env.PORT || 3000;
 // ===========================================================
 app.use(cors());
 app.use(express.json());
-
-// Serve arquivos estáticos em /public (index.html, script.js, etc.)
 app.use(express.static(path.join(__dirname, "public")));
 
 // ===========================================================
@@ -24,17 +22,18 @@ app.use(express.static(path.join(__dirname, "public")));
 const pools = {
   dados_poste: new Pool({
     connectionString:
-      process.env.DATABASE_URL || "postgresql://neondb_owner:npg_CIxXZ6mF9Oud@ep-dawn-boat-a8zaanby-pooler.eastus2.azure.neon.tech/neondb?sslmode=require",
+      process.env.DATABASE_URL ||
+      "postgresql://neondb_owner:npg_CIxXZ6mF9Oud@ep-dawn-boat-a8zaanby-pooler.eastus2.azure.neon.tech/neondb?sslmode=require",
     ssl: { rejectUnauthorized: false },
-  })
+  }),
 };
 
 // ===========================================================
-// 3) CACHE PARA /api/postes (GET) – JÁ EXISTENTE
+// 3) CACHE PARA /api/postes (GET)
 // ===========================================================
 let cachePostes = null;
 let cacheTimestamp = 0;
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutos
+const CACHE_TTL = 10 * 60 * 1000;
 
 app.get("/api/postes", async (req, res) => {
   const now = Date.now();
@@ -47,13 +46,13 @@ app.get("/api/postes", async (req, res) => {
       Object.entries(pools).map(async ([cidade, pool]) => {
         const { rows } = await pool.query(`
           SELECT 
-            id_poste,
-            empresa,
-            resumo,
-            coordenadas,
+            id AS id_poste,
+            'DESCONHECIDA' AS empresa,
+            nome_logradouro AS resumo,
+            NULL AS coordenadas,
             nome_municipio
           FROM dados_poste
-          WHERE coordenadas IS NOT NULL AND TRIM(coordenadas) <> ''
+          WHERE nome_logradouro IS NOT NULL
         `);
         return rows;
       })
@@ -65,13 +64,13 @@ app.get("/api/postes", async (req, res) => {
 
     res.json(todosPostes);
   } catch (err) {
-  console.error("Erro ao buscar dados:", err); // <--- já existe
-  res.status(500).json({ error: "Erro no servidor", detalhes: err.message });
-}
+    console.error("Erro ao buscar dados:", err);
+    res.status(500).json({ error: "Erro no servidor", detalhes: err.message });
+  }
 });
 
 // ===========================================================
-// 4) NOVA ROTA: POST /api/postes/report → GERA O EXCEL
+// 4) POST /api/postes/report → GERA EXCEL
 // ===========================================================
 app.post("/api/postes/report", async (req, res) => {
   try {
@@ -87,9 +86,7 @@ app.post("/api/postes/report", async (req, res) => {
       .filter((n) => !isNaN(n));
 
     if (idsNum.length === 0) {
-      return res
-        .status(400)
-        .json({ error: "Nenhum ID válido encontrado." });
+      return res.status(400).json({ error: "Nenhum ID válido encontrado." });
     }
 
     const resultados = await Promise.all(
@@ -97,13 +94,11 @@ app.post("/api/postes/report", async (req, res) => {
         const { rows } = await pool.query(
           `
           SELECT
-            id_poste,
-            empresa,
-            coordenadas
+            id AS id_poste,
+            'DESCONHECIDA' AS empresa,
+            nome_logradouro AS coordenadas
           FROM dados_poste
-          WHERE coordenadas IS NOT NULL
-            AND TRIM(coordenadas) <> ''
-            AND id_poste = ANY($1)
+          WHERE id = ANY($1)
         `,
           [idsNum]
         );
