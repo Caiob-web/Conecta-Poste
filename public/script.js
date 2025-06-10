@@ -1,4 +1,4 @@
-// script.js - otimizando mapa com cache IndexedDB + limite de marcadores
+// script.js - otimizando mapa com cache IndexedDB + carregamento completo
 
 // 1. Inicializa o IndexedDB
 let db;
@@ -74,10 +74,8 @@ const carregarPostesPorBbox = async (map, markers, todosPostes) => {
     agrupado[poste.id_poste] = { id_poste: poste.id_poste, coordenadas: poste.coordenadas, lat, lon };
   });
 
-  let contador = 0;
   for (const poste of Object.values(agrupado)) {
-    if (++contador > 1000) break;
-    const cor = "green";
+    const cor = "green"; // Pode mudar para vermelho no futuro baseado nas empresas
     const icone = L.divIcon({
       html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
       iconSize: [16, 16],
