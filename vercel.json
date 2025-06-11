@@ -4,8 +4,13 @@
     { "src": "api/*.js", "use": "@vercel/node" }
   ],
   "routes": [
+    // 1) rotas da API
     { "src": "/api/(.*)", "dest": "/api/$1.js" },
-    { "src": "/", "dest": "/index.html" },
-    { "src": "/(.*)", "dest": "/$1" }
+
+    // 2) raiz serve o index.html dentro de public
+    { "src": "/",        "dest": "/public/index.html" },
+
+    // 3) todo o resto é estático em public
+    { "src": "/(.*)",    "dest": "/public/$1" }
   ]
 }
