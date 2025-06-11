@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const result = await pool.query(\`
+    const result = await pool.query(`
       SELECT 
         id AS id_poste,
         nome_municipio,
@@ -25,7 +25,7 @@ export default async function handler(req, res) {
         resumo
       FROM dados_poste 
       WHERE coordenadas IS NOT NULL AND coordenadas <> ''
-    \`);
+    `);
 
     res.status(200).json(result.rows);
   } catch (err) {
