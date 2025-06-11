@@ -4,10 +4,16 @@
     <meta charset="UTF-8" />
     <title>Conecta Poste</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    
+    <!-- MarkerCluster CSS -->
     <link
       rel="stylesheet"
-      href="https://unpkg.com/leaflet/dist/leaflet.css"
+      href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
     />
+
     <style>
       #map {
         height: 100vh;
@@ -18,7 +24,14 @@
   <body>
     <div id="map"></div>
 
+    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <!-- MarkerCluster JS -->
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+    <!-- Seu script -->
     <script src="/script.js"></script>
   </body>
 </html>
+
