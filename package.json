@@ -1,0 +1,9 @@
+{
+  "name": "conecta-poste",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "exceljs": "^4.3.0",
+    "pg": "^8.10.0"
+  }
+}
