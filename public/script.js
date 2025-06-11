@@ -9,14 +9,14 @@ fetch('/api/postes')
         const [lat, lng] = poste.coordenadas.split(',').map(Number);
         if (!isNaN(lat) && !isNaN(lng)) {
           L.marker([lat, lng]).addTo(map)
-            .bindPopup(\`
-              <strong>ID:</strong> \${poste.id_poste}<br>
-              <strong>Bairro:</strong> \${poste.nome_bairro}<br>
-              <strong>Logradouro:</strong> \${poste.nome_logradouro}<br>
-              <strong>Material:</strong> \${poste.material}<br>
-              <strong>Altura:</strong> \${poste.altura} m<br>
-              <strong>Tensão Mecânica:</strong> \${poste.tensao_mecanica}
-            \`);
+            .bindPopup(`
+              <strong>ID:</strong> ${poste.id_poste}<br>
+              <strong>Bairro:</strong> ${poste.nome_bairro}<br>
+              <strong>Logradouro:</strong> ${poste.nome_logradouro}<br>
+              <strong>Material:</strong> ${poste.material}<br>
+              <strong>Altura:</strong> ${poste.altura} m<br>
+              <strong>Tensão Mecânica:</strong> ${poste.tensao_mecanica}
+            `);
         }
       }
     });
