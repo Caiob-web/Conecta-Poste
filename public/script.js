@@ -18,7 +18,7 @@ function carregarPostes() {
 
       data.forEach(poste => {
         if (!poste.coordenadas) return;
-        const [lat, lng] = poste.coordenadas.split(',').map(parseFloat);
+        const [lat, lng] = poste.coordenadas.split(',').map(coord => parseFloat(coord));
         if (isNaN(lat) || isNaN(lng)) return;
 
         const marker = L.marker([lat, lng]);
@@ -42,5 +42,5 @@ function carregarPostes() {
 
 // Carrega inicialmente
 map.on('load', carregarPostes);
-map.on('moveend', carregarPostes); // atualiza ao mover o mapa
-map.fire('load'); // aciona no início
+map.on('moveend', carregarPostes);
+map.fire('load');
