@@ -1,3 +1,23 @@
+
+// ============================
+// script.js (versão integrada com BBOX)
+// ============================
+
+const map = L.map("map").setView([-23.2, -45.9], 12);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+
+const markers = L.markerClusterGroup({
+  spiderfyOnMaxZoom: true,
+  showCoverageOnHover: false,
+  zoomToBoundsOnClick: false,
+  maxClusterRadius: 60,
+  disableClusteringAtZoom: 17,
+});
+markers.on("clusterclick", (a) => a.layer.spiderfy());
+
+const todosPostes = [];
+const empresasContagem = [];
+
 function carregarPostesPorBBox() {
   const bounds = map.getBounds();
   const params = new URLSearchParams({
@@ -12,7 +32,7 @@ function carregarPostesPorBBox() {
     .then(data => {
       markers.clearLayers();
       todosPostes.length = 0;
-      empresasContagem.length = 0;
+      for (const key in empresasContagem) delete empresasContagem[key];
 
       const agrupado = {};
 
@@ -70,10 +90,12 @@ function carregarPostesPorBBox() {
       });
 
       map.addLayer(markers);
-      preencherAutocomplete();
     })
     .catch(err => {
       console.error("Erro ao carregar postes por bbox:", err);
       alert("Erro ao carregar dados visíveis.");
     });
 }
+
+map.on("moveend", carregarPostesPorBBox);
+carregarPostesPorBBox();
