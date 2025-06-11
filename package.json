@@ -4,6 +4,7 @@
   "description": "Mapa interativo de postes com Vercel e Neon",
   "main": "api/postes.js",
   "scripts": {
+    "dev": "vercel dev",
     "start": "node api/postes.js"
   },
   "dependencies": {
