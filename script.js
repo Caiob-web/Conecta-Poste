@@ -5,7 +5,12 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 fetch('/api/postes')
   .then(res => res.json())
   .then(data => {
-    if (!Array.isArray(data)) throw new Error("Resposta da API não é um array");
+    console.log("Resposta da API:", data);  // <-- Verifique o que está vindo da API
+
+    if (!Array.isArray(data)) {
+      console.warn("A resposta da API não é um array. Verifique o backend.");
+      return;  // Evita tentar iterar sobre algo que não é um array
+    }
 
     data.forEach(poste => {
       if (poste.coordenadas) {
