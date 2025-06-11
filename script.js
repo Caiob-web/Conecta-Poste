@@ -1,43 +1,79 @@
-const map = L.map('map').setView([-23.2, -45.9], 12);
-
-// Adiciona camada de mapa base (OpenStreetMap)
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-// Requisição para API de postes
-fetch('/api/postes')
-  .then(res => res.json())
-  .then(data => {
-    console.log("Resposta da API:", data);
-
-    // Verifica se o retorno da API é um array
-    if (!Array.isArray(data)) {
-      console.warn("A resposta da API não é um array:", data);
-      alert("Formato de dados inesperado da API.");
-      return;
-    }
-
-    // Itera sobre cada poste retornado
-    data.forEach(poste => {
-      if (poste.coordenadas) {
-        const [lat, lng] = poste.coordenadas.split(',').map(Number);
-
-        if (!isNaN(lat) && !isNaN(lng)) {
-          // Cria marcador no mapa
-          L.marker([lat, lng])
-            .addTo(map)
-            .bindPopup(`
-              <strong>ID:</strong> ${poste.id_poste}<br>
-              <strong>Bairro:</strong> ${poste.nome_bairro}<br>
-              <strong>Logradouro:</strong> ${poste.nome_logradouro}<br>
-              <strong>Material:</strong> ${poste.material}<br>
-              <strong>Altura:</strong> ${poste.altura} m<br>
-              <strong>Tensão Mecânica:</strong> ${poste.tensao_mecanica}
-            `);
-        }
-      }
-    });
-  })
-  .catch(err => {
-    console.error("Erro ao carregar postes:", err);
-    alert("Erro ao carregar os dados dos postes.");
+function carregarPostesPorBBox() {
+  const bounds = map.getBounds();
+  const params = new URLSearchParams({
+    minLat: bounds.getSouth(),
+    maxLat: bounds.getNorth(),
+    minLng: bounds.getWest(),
+    maxLng: bounds.getEast(),
   });
+
+  fetch(`/api/postes?${params.toString()}`)
+    .then(res => res.json())
+    .then(data => {
+      markers.clearLayers();
+      todosPostes.length = 0;
+      empresasContagem.length = 0;
+
+      const agrupado = {};
+
+      data.forEach((poste) => {
+        if (!poste.coordenadas) return;
+        const [lat, lon] = poste.coordenadas.split(",").map(Number);
+        if (isNaN(lat) || isNaN(lon)) return;
+        const key = poste.id_poste;
+        if (!agrupado[key]) {
+          agrupado[key] = {
+            id_poste: poste.id_poste,
+            resumo: poste.resumo,
+            nome_municipio: poste.nome_municipio,
+            coordenadas: poste.coordenadas,
+            empresas: new Set(),
+            lat,
+            lon,
+          };
+        }
+
+        if (poste.empresa && poste.empresa.toUpperCase() !== "DISPONÍVEL") {
+          agrupado[key].empresas.add(poste.empresa);
+        }
+      });
+
+      Object.values(agrupado).forEach((poste) => {
+        const empresasArray = [...poste.empresas];
+        empresasArray.forEach((empresa) => {
+          empresasContagem[empresa] = (empresasContagem[empresa] || 0) + 1;
+        });
+
+        const qtdEmpresas = empresasArray.length;
+        const cor = qtdEmpresas >= 5 ? "red" : "green";
+
+        const icone = L.divIcon({
+          className: "",
+          html: `<div style="width:14px;height:14px;border-radius:50%;background:${cor};border:2px solid white;"></div>`,
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
+        });
+
+        const listaEmpresas = empresasArray.map((e) => `<li>${e}</li>`).join("");
+        const marker = L.marker([poste.lat, poste.lon], { icon: icone });
+        marker.bindPopup(
+          `<b>ID do Poste:</b> ${poste.id_poste}<br>
+           <b>Coordenadas:</b> ${poste.lat.toFixed(6)}, ${poste.lon.toFixed(6)}<br>
+           <b>Empresas:</b><ul>${listaEmpresas}</ul>`
+        );
+        marker.bindTooltip(`ID: ${poste.id_poste} • ${qtdEmpresas} empresa(s)`, {
+          direction: "top",
+        });
+
+        markers.addLayer(marker);
+        todosPostes.push({ ...poste, empresas: empresasArray });
+      });
+
+      map.addLayer(markers);
+      preencherAutocomplete();
+    })
+    .catch(err => {
+      console.error("Erro ao carregar postes por bbox:", err);
+      alert("Erro ao carregar dados visíveis.");
+    });
+}
