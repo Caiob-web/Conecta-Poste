@@ -1,37 +1,33 @@
-// (opcional: gerar Excel com base em IDs)
-// ==============================
-import ExcelJS from 'exceljs';
 import { Pool } from 'pg';
+import ExcelJS from 'exceljs';
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end();
+  if (req.method !== 'POST') return res.status(405).send('Método não permitido');
+  const { ids } = req.body;
+  if (!Array.isArray(ids)) return res.status(400).send('IDs inválidos');
+
   try {
-    const { ids } = req.body;
     const { rows } = await pool.query(
       `SELECT id_poste, empresa, coordenadas FROM dados_poste WHERE id_poste = ANY($1)`,
-      [ids]
+      [ids.map(id => parseInt(id, 10)).filter(n => !isNaN(n))]
     );
 
-    const wb = new ExcelJS.Workbook();
-    const sheet = wb.addWorksheet('Relatório');
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Postes');
     sheet.columns = [
       { header: 'ID', key: 'id_poste', width: 10 },
       { header: 'Empresa', key: 'empresa', width: 30 },
-      { header: 'Coordenadas', key: 'coordenadas', width: 30 },
+      { header: 'Coordenada', key: 'coordenadas', width: 30 },
     ];
-    rows.forEach(r => sheet.addRow(r));
+    sheet.addRows(rows);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="relatorio.xlsx"');
-    await wb.xlsx.write(res);
+    res.setHeader('Content-Disposition', 'attachment; filename=relatorio.xlsx');
+    await workbook.xlsx.write(res);
     res.end();
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: 'Erro ao gerar Excel' });
   }
 }
