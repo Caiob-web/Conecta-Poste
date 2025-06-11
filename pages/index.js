@@ -44,14 +44,8 @@ export default function Home() {
       <Head>
         <title>Conecta Poste</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <link
-          rel="stylesheet"
-          href="https://unpkg.com/leaflet/dist/leaflet.css"
-        />
-        <script
-          src="https://unpkg.com/leaflet/dist/leaflet.js"
-          defer
-        ></script>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+        <script src="https://unpkg.com/leaflet/dist/leaflet.js" defer></script>
       </Head>
       <div id="map" style={{ height: '100vh', width: '100vw' }}></div>
     </>
