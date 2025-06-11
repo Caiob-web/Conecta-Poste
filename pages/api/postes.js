@@ -13,17 +13,18 @@ export default async function handler(req, res) {
 
   try {
     const result = await pool.query(`
-      SELECT 
-        id_poste,
-        nome_bairro,
-        nome_logradouro,
-        material,
-        altura,
-        tensao_mecanica,
-        coordenadas
-      FROM dados_poste
-      WHERE coordenadas IS NOT NULL AND TRIM(coordenadas) <> ''
-    `);
+  SELECT 
+    id,
+    nome_bairro,
+    nome_logradouro,
+    material,
+    altura,
+    tensao_mecanica,
+    coordenadas
+  FROM dados_poste
+  WHERE coordenadas IS NOT NULL AND TRIM(coordenadas) <> ''
+`);
+
 
     if (!Array.isArray(result.rows)) {
       console.error("Dados não retornaram como array:", result.rows);
