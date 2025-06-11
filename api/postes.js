@@ -7,12 +7,15 @@ const pool = new Pool({
 
 export default async function handler(req, res) {
   try {
-    const result = await pool.query(
-      `SELECT id_poste, coordenadas FROM dados_poste WHERE coordenadas IS NOT NULL AND TRIM(coordenadas) <> ''`
-    );
+    const result = await pool.query(`
+      SELECT id_poste, coordenadas 
+      FROM dados_poste 
+      WHERE coordenadas IS NOT NULL AND TRIM(coordenadas) <> ''
+    `);
+
     res.status(200).json(result.rows);
   } catch (err) {
-    console.error(err);
+    console.error("Erro na API /api/postes:", err);
     res.status(500).json({ error: 'Erro interno' });
   }
 }
