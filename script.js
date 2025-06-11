@@ -23,6 +23,6 @@ fetch('/api/postes')
     });
   })
   .catch(err => {
-    console.error("Erro ao carregar postes:", err);
+   console.error("Erro ao carregar postes:", err);
     alert("Erro ao carregar os dados dos postes.");
   });
