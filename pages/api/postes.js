@@ -1,4 +1,3 @@
-
 import { Pool } from 'pg';
 
 const pool = new Pool({
@@ -14,11 +13,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    const result = await pool.query(\`
+    const result = await pool.query(`
       SELECT id AS id_poste, resumo, nome_municipio, coordenadas, empresa
       FROM dados_poste
       WHERE coordenadas IS NOT NULL AND coordenadas <> ''
-    \`);
+    `);
 
     const postes = result.rows.filter(p => {
       if (!p.coordenadas.includes(',')) return false;
